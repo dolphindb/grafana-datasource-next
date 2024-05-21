@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/dolphin-db/dolphindb-datasource/pkg/models"
+	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 )
 
 // Make sure Datasource implements required interfaces. This is important to do
@@ -59,7 +60,14 @@ func (d *Datasource) QueryData(ctx context.Context, req *backend.QueryDataReques
 	return response, nil
 }
 
-type queryModel struct{}
+type queryModel struct {
+	QueryText     string      `json:"queryText"`
+	Constant      float64     `json:"constant"` // 保持 float64 类型
+	Datasource    Datasource  `json:"datasource"`
+	IntervalMs    int         `json:"intervalMs"`
+	MaxDataPoints int         `json:"maxDataPoints"`
+	RefID         string      `json:"refId"`
+}
 
 func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query backend.DataQuery) backend.DataResponse {
 	var response backend.DataResponse
@@ -71,6 +79,11 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 	if err != nil {
 		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("json unmarshal: %v", err.Error()))
 	}
+
+	log.DefaultLogger.Info("This is an info message")
+	log.DefaultLogger.Info(fmt.Sprintf("%s", qm.QueryText))
+    log.DefaultLogger.Info("Time Range From:", "from", fmt.Sprintf("%v", query.TimeRange.From))
+    log.DefaultLogger.Info("Time Range To:", "to", fmt.Sprintf("%v", query.TimeRange.To))
 
 	// create data frame response.
 	// For an overview on data frames and how grafana handles them:
