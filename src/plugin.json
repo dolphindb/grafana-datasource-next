@@ -6,6 +6,7 @@
   "metrics": true,
   "backend": true,
   "executable": "gpx_dolphindb_datasource",
+  "alerting": true,
   "info": {
     "description": "Dolphin db grafana datasource",
     "author": {
