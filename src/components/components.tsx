@@ -110,7 +110,7 @@ export class DataSource extends DataSourceApi<DdbDataQuery, DataSourceConfig> {
 
         return merge(...request.targets.map(query => {
             const { refId, hide, is_streaming } = query
-            const code = query.code || ''
+            const code = query.queryText || ''
 
             return new Observable<DataQueryResponse>(subscriber => {
                 if (is_streaming) {
@@ -628,7 +628,7 @@ export function QueryEditor(
                         onChange({
                             refId: query.refId,
                             is_streaming: v.value === 'streaming',
-                            code: query.queryText,
+                            queryText: query.queryText,
                             streaming: {
                                 table: query.streaming?.table,
                             }
@@ -661,7 +661,7 @@ export function QueryEditor(
                                     onChange({
                                         refId,
                                         is_streaming,
-                                        code,
+                                        queryText,
                                         streaming: {
                                             table: value || streaming?.table,
                                         }
@@ -702,9 +702,9 @@ export function VariableEditor({
                 {/* @ts-ignore */}
                 <DdbCodeEditor
                     height={200}
-                    query={{ code: query, refId: 'variable', is_streaming: false }}
-                    onChange={({ code }) => {
-                        rquery.current = code
+                    query={{ queryText: query, refId: 'variable', is_streaming: false }}
+                    onChange={({ queryText }) => {
+                        rquery.current = queryText
                     }}
                     onRunQuery={save}
                     tip={false}
