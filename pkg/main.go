@@ -24,26 +24,21 @@ package main
 // }
 
 import (
-    "context"
 	"fmt"
-    "github.com/dolphindb/api-go/api"
+
 	"github.com/davecgh/go-spew/spew"
+	"github.com/dolphin-db/dolphindb-datasource/pkg/db"
 )
 
 func main() {
-	dbPath := "dfs://StockDB"
-	tbName := "stockPrices"
-	conn, err := api.NewSimpleDolphinDBClient(context.TODO(), "localhost:8848", "admin", "123456")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	
-	tb, err := conn.RunScript(fmt.Sprintf("select * from loadTable('%s','%s')", dbPath, tbName))
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+    dbPath := "dfs://StockDB"
+    tbName := "stockPrices"
 
-	spew.Dump(tb)
+    tb, err := db.LoadTable(dbPath, tbName)
+    if err != nil {
+        fmt.Println(err)
+        return
+    }
+
+    spew.Dump(tb)
 }
