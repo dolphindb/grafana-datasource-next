@@ -1,11 +1,36 @@
-import { DataSourceInstanceSettings, CoreApp, ScopedVars } from '@grafana/data';
+import { DataSourceInstanceSettings, CoreApp, ScopedVars, DataQueryResponse } from '@grafana/data';
 import { DataSourceWithBackend, getTemplateSrv } from '@grafana/runtime';
 
 import { MyQuery, MyDataSourceOptions, DEFAULT_QUERY } from './types';
+import { Observable, merge } from 'rxjs';
+
 
 export class DataSource extends DataSourceWithBackend<MyQuery, MyDataSourceOptions> {
   constructor(instanceSettings: DataSourceInstanceSettings<MyDataSourceOptions>) {
     super(instanceSettings);
+  }
+
+  query(request:any): Observable<DataQueryResponse> {
+    return super.query(request);
+
+
+    /**
+     * Streaming，待研究
+     */
+    // const observables = request.targets.map((query) => {
+    //   return getGrafanaLiveSrv().getDataStream({
+    //     addr: {
+    //       scope: LiveChannelScope.DataSource,
+    //       namespace: this.uid,
+    //       path: `my-ws/custom-${query.lowerLimit}-${query.upperLimit}`, // this will allow each new query to create a new connection
+    //       data: {
+    //         ...query,
+    //       },
+    //     },
+    //   });
+    // });
+
+    // return merge(...observables);
   }
 
   getDefaultQuery(_: CoreApp): Partial<MyQuery> {
