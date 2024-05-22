@@ -1,4 +1,4 @@
-import { DataSourceInstanceSettings, CoreApp, ScopedVars, DataQueryResponse } from '@grafana/data';
+import { DataSourceInstanceSettings, CoreApp, ScopedVars, DataQueryResponse, MetricFindValue } from '@grafana/data';
 import { DataSourceWithBackend, getTemplateSrv } from '@grafana/runtime';
 
 import { MyQuery, MyDataSourceOptions, DEFAULT_QUERY } from './types';
@@ -11,7 +11,7 @@ export class DataSource extends DataSourceWithBackend<MyQuery, MyDataSourceOptio
     super(instanceSettings);
   }
 
-  query(request:any): Observable<DataQueryResponse> {
+  query(request: any): Observable<DataQueryResponse> {
     return super.query(request);
 
 
@@ -38,12 +38,18 @@ export class DataSource extends DataSourceWithBackend<MyQuery, MyDataSourceOptio
     return DEFAULT_QUERY;
   }
 
-  applyTemplateVariables(query: MyQuery, scopedVars: ScopedVars): Record<string, any> {
-    return {
-      ...query,
-      queryText: getTemplateSrv().replace(query.queryText, scopedVars),
-    };
+  override async metricFindQuery(query: string, options: any): Promise<MetricFindValue[]> {
+    console.log('metricFindQuery:', { query, options })
+
+    return [{ text: '123', value: '123' }]
   }
+
+  // applyTemplateVariables(query: MyQuery, scopedVars: ScopedVars): Record<string, any> {
+  //   return {
+  //     ...query,
+  //     queryText: getTemplateSrv().replace(query.queryText, scopedVars),
+  //   };
+  // }
 
   filterQuery(query: MyQuery): boolean {
     // if no query has been provided, prevent the query from being executed
