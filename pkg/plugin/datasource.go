@@ -11,6 +11,8 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/dolphin-db/dolphindb-datasource/pkg/models"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
+	"github.com/davecgh/go-spew/spew"
+	"github.com/dolphin-db/dolphindb-datasource/pkg/db"
 )
 
 // Make sure Datasource implements required interfaces. This is important to do
@@ -69,6 +71,12 @@ type queryModel struct {
 	RefID         string      `json:"refId"`
 }
 
+func parseJSONData(jsonData json.RawMessage) (db.DBConfig, error) {
+    var config db.DBConfig
+    err := json.Unmarshal(jsonData, &config)
+    return config, err
+}
+
 func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query backend.DataQuery) backend.DataResponse {
 	var response backend.DataResponse
 
@@ -80,10 +88,30 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("json unmarshal: %v", err.Error()))
 	}
 
-	log.DefaultLogger.Info("This is an info message")
+	log.DefaultLogger.Info("Run Query")
 	log.DefaultLogger.Info(fmt.Sprintf("%s", qm.QueryText))
-    log.DefaultLogger.Info("Time Range From:", "from", fmt.Sprintf("%v", query.TimeRange.From))
-    log.DefaultLogger.Info("Time Range To:", "to", fmt.Sprintf("%v", query.TimeRange.To))
+	log.DefaultLogger.Info("Lets see plugin context")
+	log.DefaultLogger.Info(spew.Sdump(pCtx))
+    // log.DefaultLogger.Info("Time Range From:", "from", fmt.Sprintf("%v", query.TimeRange.From))
+    // log.DefaultLogger.Info("Time Range To:", "to", fmt.Sprintf("%v", query.TimeRange.To))
+
+	config, err := parseJSONData(pCtx.DataSourceInstanceSettings.JSONData)
+    if err != nil {
+        log.DefaultLogger.Error("Error parsing JSONData: %v", err)
+    }
+
+    conn, err := db.GetDatasource(pCtx.DataSourceInstanceSettings.UID, config)
+    if err != nil {
+        log.DefaultLogger.Error("Error getting datasource: %v", err)
+    }
+
+	// tb, err := conn.RunScript(fmt.Sprintf("select * from loadTable('%s','%s')", "dfs://StockDB", "stockPrices"))
+	tb, err := conn.RunScript(qm.QueryText);
+    if err != nil {
+        log.DefaultLogger.Error("Error get table data: %v", err)
+    }
+
+    log.DefaultLogger.Info(spew.Sdump(tb))
 
 	// create data frame response.
 	// For an overview on data frames and how grafana handles them:
@@ -116,11 +144,13 @@ func (d *Datasource) CheckHealth(_ context.Context, req *backend.CheckHealthRequ
 		return res, nil
 	}
 
-	if config.Secrets.ApiKey == "" {
-		res.Status = backend.HealthStatusError
-		res.Message = "API key is missing"
-		return res, nil
-	}
+	log.DefaultLogger.Info("The Config is")
+	log.DefaultLogger.Info(spew.Sdump(config))
+	// if config.Secrets.ApiKey == "" {
+	// 	res.Status = backend.HealthStatusError
+	// 	res.Message = "API key is missing"
+	// 	return res, nil
+	// }
 
 	return &backend.CheckHealthResult{
 		Status:  backend.HealthStatusOk,

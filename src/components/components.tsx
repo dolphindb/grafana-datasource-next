@@ -505,7 +505,7 @@ export function ConfigEditor({
 }: DataSourcePluginOptionsEditorProps<DataSourceConfig>) {
     let { jsonData } = options
 
-    jsonData.url ??= 'ws://127.0.0.1:8848'
+    jsonData.url ??= '127.0.0.1:8848'
     jsonData.autologin ??= true
     jsonData.username ??= 'admin'
     jsonData.password ??= '123456'
@@ -582,7 +582,7 @@ export function ConfigEditor({
             />
         </InlineField>
 
-        <div className='version'>({t('插件构建时间:')} {BUILD_TIME})</div>
+        <div className='version'>({t('插件构建时间:')} {''})</div>
 
         {/* <div className='options'>
             { JSON.stringify(options) }
