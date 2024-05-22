@@ -4,16 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/dolphin-db/dolphindb-datasource/pkg/db"
 	"github.com/dolphin-db/dolphindb-datasource/pkg/models"
-	"github.com/dolphindb/api-go/model"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
-	"github.com/grafana/grafana-plugin-sdk-go/data"
 )
 
 // Make sure Datasource implements required interfaces. This is important to do
@@ -64,18 +61,18 @@ func (d *Datasource) QueryData(ctx context.Context, req *backend.QueryDataReques
 }
 
 type queryModel struct {
-	QueryText     string      `json:"queryText"`
-	Constant      float64     `json:"constant"` // 保持 float64 类型
-	Datasource    Datasource  `json:"datasource"`
-	IntervalMs    int         `json:"intervalMs"`
-	MaxDataPoints int         `json:"maxDataPoints"`
-	RefID         string      `json:"refId"`
+	QueryText     string     `json:"queryText"`
+	Constant      float64    `json:"constant"` // 保持 float64 类型
+	Datasource    Datasource `json:"datasource"`
+	IntervalMs    int        `json:"intervalMs"`
+	MaxDataPoints int        `json:"maxDataPoints"`
+	RefID         string     `json:"refId"`
 }
 
 func parseJSONData(jsonData json.RawMessage) (db.DBConfig, error) {
-    var config db.DBConfig
-    err := json.Unmarshal(jsonData, &config)
-    return config, err
+	var config db.DBConfig
+	err := json.Unmarshal(jsonData, &config)
+	return config, err
 }
 
 func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query backend.DataQuery) backend.DataResponse {
@@ -90,53 +87,36 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 	}
 
 	log.DefaultLogger.Info("Run Query %s", qm.QueryText)
-	log.DefaultLogger.Info("Lets see plugin context")
-	log.DefaultLogger.Info(spew.Sdump(pCtx))
-    // log.DefaultLogger.Info("Time Range From:", "from", fmt.Sprintf("%v", query.TimeRange.From))
-    // log.DefaultLogger.Info("Time Range To:", "to", fmt.Sprintf("%v", query.TimeRange.To))
+	// 这是用来展示插件配置文件的
+	// log.DefaultLogger.Info("Lets see plugin context")
+	// log.DefaultLogger.Info(spew.Sdump(pCtx))
+	// 这是用来展示查询时间的
+	// log.DefaultLogger.Info("Time Range From:", "from", fmt.Sprintf("%v", query.TimeRange.From))
+	// log.DefaultLogger.Info("Time Range To:", "to", fmt.Sprintf("%v", query.TimeRange.To))
 
 	config, err := parseJSONData(pCtx.DataSourceInstanceSettings.JSONData)
-    if err != nil {
-        log.DefaultLogger.Error("Error parsing JSONData: %v", err)
-    }
+	if err != nil {
+		log.DefaultLogger.Error("Error parsing JSONData: %v", err)
+	}
 
-    conn, err := db.GetDatasource(pCtx.DataSourceInstanceSettings.UID, config)
-    if err != nil {
-        log.DefaultLogger.Error("Error getting datasource: %v", err)
-    }
+	conn, err := db.GetDatasource(pCtx.DataSourceInstanceSettings.UID, config)
+	if err != nil {
+		log.DefaultLogger.Error("Error getting datasource: %v", err)
+	}
 
 	// tb, err := conn.RunScript(fmt.Sprintf("select * from loadTable('%s','%s')", "dfs://StockDB", "stockPrices"))
-	df, err := conn.RunScript(qm.QueryText);
-    if err != nil {
-        log.DefaultLogger.Error("Error get table data: %v", err)
-    }
-
-    log.DefaultLogger.Info(spew.Sdump(df))
-
-	table := df.(*model.Table);
-	rawDates := table.GetColumnByName("date").GetRawValue()
-	rawValues := table.GetColumnByName("price").GetRawValue()
-
-	var times []time.Time
-	for _, val := range rawDates {
-		times = append(times, val.(time.Time))
-    }	
-	var prices []float64
-	for _, val := range rawValues {
-		prices = append(prices, val.(float64))
-    }
-
+	df, err := conn.RunScript(qm.QueryText)
+	if err != nil {
+		log.DefaultLogger.Error("Error get table data: %v", err)
+	}
 
 	// create data frame response.
 	// For an overview on data frames and how grafana handles them:
 	// https://grafana.com/developers/plugin-tools/introduction/data-frames
-	frame := data.NewFrame("response")
-
-	// add fields.
-	frame.Fields = append(frame.Fields,
-		data.NewField("time", nil, times),
-		data.NewField("values", nil, prices),
-	)
+	frame, err := db.TransformDataForm(df)
+	if err != nil {
+		log.DefaultLogger.Error("Error transforming dataform: %v", err)
+	}
 
 	// add the frames to the response.
 	response.Frames = append(response.Frames, frame)
