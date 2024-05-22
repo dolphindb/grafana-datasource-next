@@ -24,7 +24,7 @@ func TransformDataForm(dataform model.DataForm) (*data.Frame, error) {
 func transformTable(table *model.Table) *data.Frame {
 	// columns count
 	columns := table.Columns()
-	rows := table.ColNames
+	columnnames := table.ColNames
 
 	frame := data.NewFrame("response")
 
@@ -37,7 +37,7 @@ func transformTable(table *model.Table) *data.Frame {
 		if err != nil {
 			log.DefaultLogger.Error("column transform error, %v", err)
 		} else {
-			frame.Fields = append(frame.Fields, data.NewField(rows[i], nil, columnValues))
+			frame.Fields = append(frame.Fields, data.NewField(columnnames[i], nil, columnValues))
 		}
 	}
 
