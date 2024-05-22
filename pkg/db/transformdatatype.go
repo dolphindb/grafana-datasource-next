@@ -15,6 +15,9 @@ var typeMap = map[model.DataTypeByte]reflect.Type{
 	model.DtDate:   reflect.TypeOf(time.Time{}),
 	model.DtTime:   reflect.TypeOf(time.Time{}),
 	model.DtDouble: reflect.TypeOf(float64(0)),
+	model.DtSymbol: reflect.TypeOf("string"),
+	// 不知道为什么会出现一个 SymbolExtend
+	145:            reflect.TypeOf("string"),
 }
 
 // convertValue 将值转换为指定类型
