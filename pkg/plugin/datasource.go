@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/grafana/grafana-plugin-sdk-go/backend"
-	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
-	"github.com/grafana/grafana-plugin-sdk-go/data"
-	"github.com/dolphin-db/dolphindb-datasource/pkg/models"
-	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/dolphin-db/dolphindb-datasource/pkg/db"
+	"github.com/dolphin-db/dolphindb-datasource/pkg/models"
+	"github.com/dolphindb/api-go/model"
+	"github.com/grafana/grafana-plugin-sdk-go/backend"
+	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
+	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
+	"github.com/grafana/grafana-plugin-sdk-go/data"
 )
 
 // Make sure Datasource implements required interfaces. This is important to do
@@ -88,8 +89,7 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("json unmarshal: %v", err.Error()))
 	}
 
-	log.DefaultLogger.Info("Run Query")
-	log.DefaultLogger.Info(fmt.Sprintf("%s", qm.QueryText))
+	log.DefaultLogger.Info("Run Query %s", qm.QueryText)
 	log.DefaultLogger.Info("Lets see plugin context")
 	log.DefaultLogger.Info(spew.Sdump(pCtx))
     // log.DefaultLogger.Info("Time Range From:", "from", fmt.Sprintf("%v", query.TimeRange.From))
@@ -106,12 +106,26 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
     }
 
 	// tb, err := conn.RunScript(fmt.Sprintf("select * from loadTable('%s','%s')", "dfs://StockDB", "stockPrices"))
-	tb, err := conn.RunScript(qm.QueryText);
+	df, err := conn.RunScript(qm.QueryText);
     if err != nil {
         log.DefaultLogger.Error("Error get table data: %v", err)
     }
 
-    log.DefaultLogger.Info(spew.Sdump(tb))
+    log.DefaultLogger.Info(spew.Sdump(df))
+
+	table := df.(*model.Table);
+	rawDates := table.GetColumnByName("date").GetRawValue()
+	rawValues := table.GetColumnByName("price").GetRawValue()
+
+	var times []time.Time
+	for _, val := range rawDates {
+		times = append(times, val.(time.Time))
+    }	
+	var prices []float64
+	for _, val := range rawValues {
+		prices = append(prices, val.(float64))
+    }
+
 
 	// create data frame response.
 	// For an overview on data frames and how grafana handles them:
@@ -120,8 +134,8 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 
 	// add fields.
 	frame.Fields = append(frame.Fields,
-		data.NewField("time", nil, []time.Time{query.TimeRange.From, query.TimeRange.To}),
-		data.NewField("values", nil, []int64{10, 20}),
+		data.NewField("time", nil, times),
+		data.NewField("values", nil, prices),
 	)
 
 	// add the frames to the response.
