@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/dolphin-db/dolphindb-datasource/pkg/db"
@@ -169,4 +170,27 @@ func (d *Datasource) CheckHealth(_ context.Context, req *backend.CheckHealthRequ
 		Status:  backend.HealthStatusOk,
 		Message: "Data source is working",
 	}, nil
+}
+
+func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
+	if req.Path == "metricFindQuery" {
+		// 这里处理 metricFindQuery 的逻辑
+		// 例如，从数据库查询可用的指标列表，然后返回
+		data, err := json.Marshal([]map[string]interface{}{
+			{"text": "metric1", "value": "1"},
+			{"text": "metric2", "value": "2"},
+		})
+		if err != nil {
+			return err
+		}
+
+		response := backend.CallResourceResponse{
+			Status: http.StatusOK,
+			Body:   data,
+		}
+		return sender.Send(&response)
+	}
+
+	// 如果 req.Path 不匹配任何已知路径，返回一个错误
+	return fmt.Errorf("unknown resource")
 }

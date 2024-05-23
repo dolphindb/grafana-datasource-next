@@ -1,9 +1,8 @@
-import { DataSourceInstanceSettings, CoreApp, ScopedVars, DataQueryResponse, MetricFindValue, DataQueryRequest } from '@grafana/data';
-import { DataSourceWithBackend, getBackendSrv, getTemplateSrv } from '@grafana/runtime';
+import { DataSourceInstanceSettings, CoreApp, DataQueryResponse, MetricFindValue, DataQueryRequest } from '@grafana/data';
+import { DataSourceWithBackend, getBackendSrv } from '@grafana/runtime';
 
 import { DdbDataQuery, MyDataSourceOptions, DEFAULT_QUERY } from './types';
-import { Observable, merge } from 'rxjs';
-
+import { Observable } from 'rxjs';
 
 export class DataSource extends DataSourceWithBackend<DdbDataQuery, MyDataSourceOptions> {
   constructor(instanceSettings: DataSourceInstanceSettings<MyDataSourceOptions>) {
@@ -15,7 +14,7 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, MyDataSource
 
     // 非流
     const commonQueries = request.targets.filter(query => !query.is_streaming);
-    const streamingQueries = request.targets.filter(query => query.is_streaming);
+    // const streamingQueries = request.targets.filter(query => query.is_streaming);
 
     return new Observable<DataQueryResponse>(subscriber => {
       /**
@@ -66,9 +65,25 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, MyDataSource
   }
 
   override async metricFindQuery(query: string, options: any): Promise<MetricFindValue[]> {
-    console.log('metricFindQuery:', { query, options })
+    return new Promise((res, rej) => {
+      console.log('metricFindQuery:', { query, options })
 
-    return [{ text: '123', value: '123' }]
+      const respObservalbe = getBackendSrv().fetch({
+        url: `/api/datasources/${this.id}/resources/metricFindQuery`
+      })
+
+      respObservalbe.subscribe({
+        next(data) {
+          const metricFindValues = data.data as MetricFindValue[];
+          console.log(metricFindValues);
+          res(metricFindValues)
+        },
+        error(err) {
+          // 传递错误给上层的 subscriber
+          rej(err)
+        },
+      })
+    })
   }
 
   // applyTemplateVariables(query: MyQuery, scopedVars: ScopedVars): Record<string, any> {
