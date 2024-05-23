@@ -17,6 +17,7 @@ func TransformDataForm(dataform model.DataForm) (*data.Frame, error) {
 	case model.DfTable:
 		return transformTable(dataform.(*model.Table)), nil
 	}
+	// 现在只支持转换 Table
 	frame := data.NewFrame("response")
 	return frame, errors.New("unable to determine the data type of dataform")
 }
@@ -34,6 +35,7 @@ func transformTable(table *model.Table) *data.Frame {
 	for i := 0; i < columns; i++ {
 		columnData := table.GetColumnByIndex(i)
 		columnValues, err := TransformVector(columnData)
+		// 如果列转换失败，那就报错，然后不把这一列返回。正常的列依然添加到 Grafana 要返回的数据中，不受影响地被展示。
 		if err != nil {
 			log.DefaultLogger.Error("column transform error, %v", err)
 		} else {
