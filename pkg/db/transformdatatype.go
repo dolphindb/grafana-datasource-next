@@ -44,11 +44,11 @@ var typeMap = map[model.DataTypeByte]reflect.Type{
 }
 
 // convertValue 将值转换为指定类型
-func convertValue(val interface{}, vectorType model.DataTypeByte) (reflect.Value, error) {
+func ConvertValue(val interface{}, dataType model.DataTypeByte) (reflect.Value, error) {
 
 	// 通用转换逻辑，只进行数据转换，不额外操作
 	// 如果找不到指定的数据类型或者转换失败，则报错并返回一个空值
-	targetType, ok := typeMap[vectorType]
+	targetType, ok := typeMap[dataType]
 	if !ok {
 		return reflect.Value{}, errors.New("unsupported data type")
 	}
@@ -62,7 +62,7 @@ func convertValue(val interface{}, vectorType model.DataTypeByte) (reflect.Value
 }
 
 // convertSlice 转换切片中的元素类型
-func convertSlice(input []interface{}, vectorType model.DataTypeByte) (interface{}, error) {
+func ConvertSlice(input []interface{}, vectorType model.DataTypeByte) (interface{}, error) {
 
 	// 通用转换逻辑，只进行数据转换，不额外操作
 	// 根据类型映射进行转换
@@ -74,7 +74,7 @@ func convertSlice(input []interface{}, vectorType model.DataTypeByte) (interface
 	}
 	output := reflect.MakeSlice(reflect.SliceOf(targetType), len(input), len(input))
 	for i, val := range input {
-		convertedValue, err := convertValue(val, vectorType)
+		convertedValue, err := ConvertValue(val, vectorType)
 		if err != nil {
 			return nil, err
 		}
@@ -94,5 +94,5 @@ func TransformVector(vector *model.Vector) (interface{}, error) {
 	log.DefaultLogger.Debug(fmt.Sprintf("%d:%s", vectorType, vectorTypeString))
 	log.DefaultLogger.Debug(spew.Sdump(vectorValue[0]))
 
-	return convertSlice(vectorValue, vectorType)
+	return ConvertSlice(vectorValue, vectorType)
 }

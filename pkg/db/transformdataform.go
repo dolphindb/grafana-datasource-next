@@ -55,6 +55,35 @@ func TransformDataFormToValues(df model.DataForm) ([]map[string]interface{}, err
 	switch dataform_type {
 	case model.DfTable:
 		return transformTableToValues(df.(*model.Table))
+	case model.DfScalar:
+		sc := df.(*model.Scalar).Value()
+		dt := df.(*model.Scalar).GetDataType()
+		value, err := ConvertValue(sc, dt)
+		if err != nil {
+			return []map[string]interface{}{}, errors.New("unable to transform dataform to values")
+		}
+		return []map[string]interface{}{
+			{"text": fmt.Sprintf("%v", value), "value": value},
+		}, nil
+	case model.DfVector, model.DfPair, model.DfSet:
+		var slice interface{}
+		var vt *model.Vector
+		if dataform_type == model.DfPair {
+			vt = df.(*model.Pair).Vector
+		} else if dataform_type == model.DfSet {
+			vt = df.(*model.Set).Vector
+		} else {
+			vt = df.(*model.Vector)
+		}
+		slice, err := TransformVector(vt)
+		if err != nil {
+			return []map[string]interface{}{}, errors.New("unable to transform dataform to values")
+		}
+		values, err := convertValues(slice)
+		if err != nil {
+			return []map[string]interface{}{}, errors.New("unable to transform dataform to values")
+		}
+		return values, nil
 	}
 	// 兜底逻辑，什么也不返回
 	return []map[string]interface{}{}, errors.New("unable to transform dataform to values")
@@ -72,7 +101,7 @@ func transformTableToValues(tb *model.Table) ([]map[string]interface{}, error) {
 	if err != nil {
 		return []map[string]interface{}{}, errors.New("unable to transform table to values")
 	}
-	values := columnValues.(interface{})
+	values := columnValues
 
 	return convertValues(values)
 }
@@ -88,7 +117,6 @@ func transformTableToValues(tb *model.Table) ([]map[string]interface{}, error) {
 // 	}
 // 	return result
 // }
-
 
 func convertValues(columnValues interface{}) ([]map[string]interface{}, error) {
 	v := reflect.ValueOf(columnValues)
