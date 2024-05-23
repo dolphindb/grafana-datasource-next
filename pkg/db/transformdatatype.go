@@ -2,6 +2,7 @@ package db
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"time"
 
@@ -11,13 +12,29 @@ import (
 )
 
 // 类型映射，将 model.DataType 映射到对应的 Go 类型
+// 只适用于可以直接转成 Grafana 支持的类型的类型
 var typeMap = map[model.DataTypeByte]reflect.Type{
-	model.DtDate:   reflect.TypeOf(time.Time{}),
-	model.DtTime:   reflect.TypeOf(time.Time{}),
-	model.DtDouble: reflect.TypeOf(float64(0)),
-	model.DtSymbol: reflect.TypeOf("string"),
+	model.DtBool:          reflect.TypeOf(true),
+	model.DtString:        reflect.TypeOf(""),
+	model.DtChar:          reflect.TypeOf(""),
+	model.DtSymbol:        reflect.TypeOf(""),
+	model.DtDate:          reflect.TypeOf(time.Time{}),
+	model.DtTime:          reflect.TypeOf(time.Time{}),
+	model.DtMonth:         reflect.TypeOf(time.Time{}),
+	model.DtMinute:        reflect.TypeOf(time.Time{}),
+	model.DtSecond:        reflect.TypeOf(time.Time{}),
+	model.DtDatetime:      reflect.TypeOf(time.Time{}),
+	model.DtTimestamp:     reflect.TypeOf(time.Time{}),
+	model.DtNanoTime:      reflect.TypeOf(time.Time{}),
+	model.DtNanoTimestamp: reflect.TypeOf(time.Time{}),
+	model.DtDouble:        reflect.TypeOf(float64(0)),
+	model.DtLong:          reflect.TypeOf(int64(0)),
+	model.DtShort:         reflect.TypeOf(int16(0)),
+	model.DtInt:           reflect.TypeOf(int32(0)),
+	model.DtFloat:         reflect.TypeOf(float32(0)),
+	model.DtUUID:          reflect.TypeOf(""),
 	// 不知道为什么会出现一个 SymbolExtend
-	145: reflect.TypeOf("string"),
+	145: reflect.TypeOf(""),
 }
 
 // convertValue 将值转换为指定类型
@@ -63,8 +80,8 @@ func TransformVector(vector *model.Vector) (interface{}, error) {
 	vectorTypeString := vector.GetDataTypeString()
 
 	// 用于调试数据类型转换
-	log.DefaultLogger.Debug(spew.Sdump(vectorType))
-	log.DefaultLogger.Debug(spew.Sdump(vectorTypeString))
+	log.DefaultLogger.Debug(fmt.Sprintf("%d:%s", vectorType, vectorTypeString))
+	log.DefaultLogger.Debug(spew.Sdump(vectorValue[0]))
 
 	return convertSlice(vectorValue, vectorType)
 }
