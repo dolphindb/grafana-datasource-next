@@ -33,9 +33,13 @@ var typeMap = map[model.DataTypeByte]reflect.Type{
 	model.DtLong:          reflect.TypeOf(int64(0)),
 	model.DtShort:         reflect.TypeOf(int16(0)),
 	model.DtInt:           reflect.TypeOf(int32(0)),
+	model.DtInt128:        reflect.TypeOf(""),
+	model.DtIP:            reflect.TypeOf(""),
+	model.DtPoint:         reflect.TypeOf(""),
+	model.DtComplex:       reflect.TypeOf(""),
 	model.DtFloat:         reflect.TypeOf(float32(0)),
 	model.DtUUID:          reflect.TypeOf(""),
-	// 不知道为什么会出现一个 SymbolExtend
+	// SymbolExtend 疑似没有枚举？
 	145: reflect.TypeOf(""),
 }
 
