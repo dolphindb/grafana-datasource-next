@@ -1,5 +1,5 @@
 import { DataSourceInstanceSettings, CoreApp, DataQueryResponse, MetricFindValue, DataQueryRequest } from '@grafana/data';
-import { DataSourceWithBackend, getBackendSrv } from '@grafana/runtime';
+import { DataSourceWithBackend, getBackendSrv, getTemplateSrv } from '@grafana/runtime';
 
 import { DdbDataQuery, MyDataSourceOptions, DEFAULT_QUERY } from './types';
 import { Observable } from 'rxjs';
@@ -11,9 +11,37 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, MyDataSource
   }
 
   query(request: DataQueryRequest<DdbDataQuery>): Observable<DataQueryResponse> {
+    const { range: { from, to }, scopedVars } = request
 
     // 非流
-    const commonQueries = request.targets.filter(query => !query.is_streaming);
+    const commonQueries = request.targets.filter(query => !query.is_streaming).map(query => {
+      const code = query.queryText ?? '';
+      const tplsrv = getTemplateSrv();
+      (from as any)._isUTC = false;
+      (to as any)._isUTC = false;
+      const code_ = tplsrv
+        .replace(
+          code //@ts-ignore
+            .replaceAll(
+              /\$(__)?timeFilter\b/g,
+              () =>
+                'pair(' +
+                from.format('YYYY.MM.DD HH:mm:ss.SSS') +
+                ', ' +
+                to.format('YYYY.MM.DD HH:mm:ss.SSS') +
+                ')'
+            ).replaceAll(
+              /\$__interval\b/g,
+              () =>
+                tplsrv.replace('$__interval', scopedVars).replace(/h$/, 'H')
+            ),
+          scopedVars,
+          var_formatter
+        )
+      return {
+        ...query, queryText: code_
+      }
+    });
     // const streamingQueries = request.targets.filter(query => query.is_streaming);
 
     return new Observable<DataQueryResponse>(subscriber => {
@@ -65,11 +93,15 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, MyDataSource
   }
 
   override async metricFindQuery(query: string, options: any): Promise<MetricFindValue[]> {
-    return new Promise((res, rej) => {
-      console.log('metricFindQuery:', { query, options })
+    console.log('metricFindQuery:', { query, options })
+    const queryText = getTemplateSrv().replace(query, {}, var_formatter)
 
+    return new Promise((res, rej) => {
       const respObservalbe = getBackendSrv().fetch({
-        url: `/api/datasources/${this.id}/resources/metricFindQuery`
+        url: `/api/datasources/${this.id}/resources/metricFindQuery`,
+        method: 'POST', data: {
+          query: queryText
+        }
       })
 
       respObservalbe.subscribe({
@@ -97,4 +129,15 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, MyDataSource
     // if no query has been provided, prevent the query from being executed
     return !!query.queryText;
   }
+}
+
+// 迁移过来的格式化函数，用于变量查询
+function var_formatter(value: string | string[], variable: any, default_formatter: Function) {
+  if (typeof value === 'string')
+    return value
+
+  if (Array.isArray(variable))
+    return JSON.stringify(variable)
+
+  return default_formatter(value, 'json', variable)
 }
