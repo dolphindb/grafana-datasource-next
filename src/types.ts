@@ -1,13 +1,17 @@
 import { DataSourceJsonData } from '@grafana/data';
 import { DataQuery } from '@grafana/schema';
 
-export interface MyQuery extends DataQuery {
-  queryText?: string;
-  constant: number;
+export interface DdbDataQuery extends DataQuery {
+  is_streaming: boolean
+  queryText?: string
+  streaming?: {
+      table: string
+      action?: string
+  }
 }
 
-export const DEFAULT_QUERY: Partial<MyQuery> = {
-  constant: 6.5,
+export const DEFAULT_QUERY: Partial<DdbDataQuery> = {
+  is_streaming: false
 };
 
 export interface DataPoint {

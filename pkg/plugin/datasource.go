@@ -67,6 +67,7 @@ type queryModel struct {
 	IntervalMs    int        `json:"intervalMs"`
 	MaxDataPoints int        `json:"maxDataPoints"`
 	RefID         string     `json:"refId"`
+	Hide          bool       `json:"hide"`
 }
 
 func parseJSONData(jsonData json.RawMessage) (db.DBConfig, error) {
@@ -87,6 +88,10 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 	}
 
 	log.DefaultLogger.Info("Run Query %s", qm.QueryText)
+	// 如果是隐藏的，那就返回一个空响应
+	if qm.Hide {
+		return response
+	}
 	// 这是用来展示插件配置文件的
 	// log.DefaultLogger.Info("Lets see plugin context")
 	// log.DefaultLogger.Info(spew.Sdump(pCtx))
