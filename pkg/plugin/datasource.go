@@ -8,6 +8,8 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/dolphin-db/dolphindb-datasource/pkg/db"
 	"github.com/dolphin-db/dolphindb-datasource/pkg/models"
+	"github.com/dolphindb/api-go/api"
+	"github.com/dolphindb/api-go/model"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
@@ -110,7 +112,19 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 	}
 
 	// tb, err := conn.RunScript(fmt.Sprintf("select * from loadTable('%s','%s')", "dfs://StockDB", "stockPrices"))
-	df, err := conn.RunScript(qm.QueryText)
+	task := &api.Task{Script: qm.QueryText}
+	err = conn.Execute([]*api.Task{task})
+	if err != nil {
+		log.DefaultLogger.Error("Error run task: %v", err)
+	}
+	var data model.DataForm
+	if task.IsSuccess() {
+		data = task.GetResult()
+		log.DefaultLogger.Debug("Task Result %s", spew.Sdump(data))
+	} else {
+		log.DefaultLogger.Error("Error run task: %v", task.GetError())
+	}
+	df := data
 	if err != nil {
 		log.DefaultLogger.Error("Error get table data: %v", err)
 	}
