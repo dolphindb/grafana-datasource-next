@@ -79,6 +79,16 @@ func parseJSONData(jsonData json.RawMessage) (db.DBConfig, error) {
 	return config, err
 }
 
+type metricFindQueryModel struct {
+	Query string `json:"query"`
+}
+
+func parseMetricFindQueryJSONData(jsonData json.RawMessage) (metricFindQueryModel, error) {
+	var queryModel metricFindQueryModel
+	err := json.Unmarshal(jsonData, &queryModel)
+	return queryModel, err
+}
+
 func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query backend.DataQuery) backend.DataResponse {
 	var response backend.DataResponse
 
@@ -121,14 +131,11 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 	var data model.DataForm
 	if task.IsSuccess() {
 		data = task.GetResult()
-		log.DefaultLogger.Debug("Task Result %s", spew.Sdump(data))
+		// log.DefaultLogger.Debug("Task Result %s", spew.Sdump(data))
 	} else {
 		log.DefaultLogger.Error("Error run task: %v", task.GetError())
 	}
 	df := data
-	if err != nil {
-		log.DefaultLogger.Error("Error get table data: %v", err)
-	}
 
 	// create data frame response.
 	// For an overview on data frames and how grafana handles them:
@@ -175,11 +182,41 @@ func (d *Datasource) CheckHealth(_ context.Context, req *backend.CheckHealthRequ
 func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
 	if req.Path == "metricFindQuery" {
 		// 这里处理 metricFindQuery 的逻辑
-		// 例如，从数据库查询可用的指标列表，然后返回
-		data, err := json.Marshal([]map[string]interface{}{
-			{"text": "metric1", "value": "1"},
-			{"text": "metric2", "value": "2"},
-		})
+
+		// Plugin Config
+		config, err := parseJSONData(req.PluginContext.DataSourceInstanceSettings.JSONData)
+		if err != nil {
+			log.DefaultLogger.Error("Error parsing JSONData: %v", err)
+		}
+		// 获取连接
+		conn, err := db.GetDatasource(req.PluginContext.DataSourceInstanceSettings.UID, config)
+		if err != nil {
+			log.DefaultLogger.Error("Error getting datasource: %v", err)
+		}
+
+		// 执行查询
+		queryModel, err := parseMetricFindQueryJSONData(req.Body)
+		if err != nil {
+			log.DefaultLogger.Error("Error parse metric find query", err)
+		}
+		task := &api.Task{Script: queryModel.Query}
+		err = conn.Execute([]*api.Task{task})
+		if err != nil {
+			log.DefaultLogger.Error("Error run task: %v", err)
+		}
+		var df model.DataForm
+		if task.IsSuccess() {
+			df = task.GetResult()
+		} else {
+			log.DefaultLogger.Error("Error run task: %v", task.GetError())
+		}
+		// 先看看数据再说
+		values, err := db.TransformDataFormToValues(df)
+		if err != nil {
+			log.DefaultLogger.Error(err.Error())
+			return err
+		}
+		data, err := json.Marshal(values)
 		if err != nil {
 			return err
 		}
@@ -191,6 +228,8 @@ func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResource
 		return sender.Send(&response)
 	}
 
-	// 如果 req.Path 不匹配任何已知路径，返回一个错误
-	return fmt.Errorf("unknown resource")
+	// NotFound
+	return sender.Send(&backend.CallResourceResponse{
+		Status: http.StatusNotFound,
+	})
 }
