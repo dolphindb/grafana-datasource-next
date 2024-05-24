@@ -7,11 +7,13 @@ import (
 	"math/rand"
 	"net/http"
 	"path"
+	"sync"
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/dolphin-db/dolphindb-datasource/pkg/db"
 	"github.com/dolphin-db/dolphindb-datasource/pkg/models"
+
 	// "github.com/dolphin-db/dolphindb-datasource/pkg/websocket"
 	"github.com/dolphindb/api-go/api"
 	"github.com/dolphindb/api-go/model"
@@ -79,16 +81,93 @@ func (d *Datasource) Dispose() {
 // The QueryDataResponse contains a map of RefID to the response for each query, and each response
 // contains Frames ([]*Frame).
 func (d *Datasource) QueryData(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
+
+	// 旧的查询方式，留作参考
+	// create response struct
+	// response := backend.NewQueryDataResponse()
+
+	// // loop over queries and execute them individually.
+	// for _, q := range req.Queries {
+	// 	res := d.query(ctx, req.PluginContext, q)
+
+	// 	// save the response in a hashmap
+	// 	// based on with RefID as identifier
+	// 	response.Responses[q.RefID] = res
+	// }
+
+	// return response, nil
+	// 参考结束
+
 	// create response struct
 	response := backend.NewQueryDataResponse()
+	var mu sync.Mutex // mutex to protect concurrent access to response
 
-	// loop over queries and execute them individually.
-	for _, q := range req.Queries {
-		res := d.query(ctx, req.PluginContext, q)
+	// parse datasource settings once
+	config, err := parseJSONData(req.PluginContext.DataSourceInstanceSettings.JSONData)
+	if err != nil {
+		return nil, err
+	}
 
-		// save the response in a hashmap
-		// based on with RefID as identifier
+	conn, err := db.GetDatasource(req.PluginContext.DataSourceInstanceSettings.UID, config)
+	if err != nil {
+		return nil, err
+	}
+	// 不要关闭连接，之后可能复用呢
+	// defer conn.Close() // ensure the connection is closed when done
+
+	// create a slice to hold all tasks
+	tasks := make([]*api.Task, len(req.Queries))
+	queryMap := make(map[*api.Task]backend.DataQuery)
+
+	// create tasks for all queries
+	for i, q := range req.Queries {
+		var qm queryModel
+		err := json.Unmarshal(q.JSON, &qm)
+		if err != nil {
+			response.Responses[q.RefID] = backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("json unmarshal: %v", err.Error()))
+		}
+
+		// skip hidden queries
+		if qm.Hide {
+			continue
+		}
+
+		task := &api.Task{Script: qm.QueryText}
+		tasks[i] = task
+		queryMap[task] = q
+	}
+
+	// execute all tasks in parallel using the connection pool
+
+	err = conn.Execute(tasks)
+	if err != nil {
+		return nil, err
+	}
+
+	// process results
+	for _, task := range tasks {
+		if task == nil {
+			continue
+		}
+
+		q := queryMap[task]
+		var res backend.DataResponse
+
+		if task.IsSuccess() {
+			data := task.GetResult()
+			frame, err := db.TransformDataForm(data)
+			if err != nil {
+				res = backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("Error transforming dataform: %v", err.Error()))
+			} else {
+				res.Frames = append(res.Frames, frame)
+			}
+		} else {
+			res = backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("Error run query task: %v", task.GetError()))
+		}
+
+		mu.Lock()
 		response.Responses[q.RefID] = res
+		mu.Unlock()
 	}
 
 	return response, nil
@@ -120,69 +199,70 @@ func parseMetricFindQueryJSONData(jsonData json.RawMessage) (metricFindQueryMode
 	return queryModel, err
 }
 
-func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query backend.DataQuery) backend.DataResponse {
-	var response backend.DataResponse
+// 现在不用这种串行的查询了，全部注释掉，用于参考
+// func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query backend.DataQuery) backend.DataResponse {
+// 	var response backend.DataResponse
 
-	// Unmarshal the JSON into our queryModel.
-	var qm queryModel
+// 	// Unmarshal the JSON into our queryModel.
+// 	var qm queryModel
 
-	err := json.Unmarshal(query.JSON, &qm)
+// 	err := json.Unmarshal(query.JSON, &qm)
 
-	// ！！重要：处理错误的示例
-	if err != nil {
-		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("json unmarshal: %v", err.Error()))
-	}
+// 	// ！！重要：处理错误的示例
+// 	if err != nil {
+// 		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("json unmarshal: %v", err.Error()))
+// 	}
 
-	log.DefaultLogger.Info("Run Query %s", qm.QueryText)
-	// 如果是隐藏的，那就返回一个空响应
-	if qm.Hide {
-		return response
-	}
-	// 这是用来展示插件配置文件的
-	// log.DefaultLogger.Info("Lets see plugin context")
-	// log.DefaultLogger.Info(spew.Sdump(pCtx))
-	// 这是用来展示查询时间的
-	// log.DefaultLogger.Info("Time Range From:", "from", fmt.Sprintf("%v", query.TimeRange.From))
-	// log.DefaultLogger.Info("Time Range To:", "to", fmt.Sprintf("%v", query.TimeRange.To))
+// 	log.DefaultLogger.Info("Run Query %s", qm.QueryText)
+// 	// 如果是隐藏的，那就返回一个空响应
+// 	if qm.Hide {
+// 		return response
+// 	}
+// 	// 这是用来展示插件配置文件的
+// 	// log.DefaultLogger.Info("Lets see plugin context")
+// 	// log.DefaultLogger.Info(spew.Sdump(pCtx))
+// 	// 这是用来展示查询时间的
+// 	// log.DefaultLogger.Info("Time Range From:", "from", fmt.Sprintf("%v", query.TimeRange.From))
+// 	// log.DefaultLogger.Info("Time Range To:", "to", fmt.Sprintf("%v", query.TimeRange.To))
 
-	config, err := parseJSONData(pCtx.DataSourceInstanceSettings.JSONData)
-	if err != nil {
-		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("Error parsing datasource settings: %v", err.Error()))
-	}
+// 	config, err := parseJSONData(pCtx.DataSourceInstanceSettings.JSONData)
+// 	if err != nil {
+// 		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("Error parsing datasource settings: %v", err.Error()))
+// 	}
 
-	conn, err := db.GetDatasource(pCtx.DataSourceInstanceSettings.UID, config)
-	if err != nil {
-		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("Error getting datasource: %v", err.Error()))
-	}
+// 	conn, err := db.GetDatasource(pCtx.DataSourceInstanceSettings.UID, config)
+// 	if err != nil {
+// 		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("Error getting datasource: %v", err.Error()))
+// 	}
 
-	// tb, err := conn.RunScript(fmt.Sprintf("select * from loadTable('%s','%s')", "dfs://StockDB", "stockPrices"))
-	task := &api.Task{Script: qm.QueryText}
-	err = conn.Execute([]*api.Task{task})
-	if err != nil {
-		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("Error run query task: %v", err.Error()))
-	}
-	var data model.DataForm
-	if task.IsSuccess() {
-		data = task.GetResult()
-		// log.DefaultLogger.Debug("Task Result %s", spew.Sdump(data))
-	} else {
-		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("Error run query task: %v", task.GetError()))
-	}
-	df := data
+// 	// tb, err := conn.RunScript(fmt.Sprintf("select * from loadTable('%s','%s')", "dfs://StockDB", "stockPrices"))
+// 	task := &api.Task{Script: qm.QueryText}
+// 	err = conn.Execute([]*api.Task{task})
+// 	if err != nil {
+// 		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("Error run query task: %v", err.Error()))
+// 	}
+// 	var data model.DataForm
+// 	if task.IsSuccess() {
+// 		data = task.GetResult()
+// 		// log.DefaultLogger.Debug("Task Result %s", spew.Sdump(data))
+// 	} else {
+// 		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("Error run query task: %v", task.GetError()))
+// 	}
+// 	df := data
 
-	// create data frame response.
-	// For an overview on data frames and how grafana handles them:
-	// https://grafana.com/developers/plugin-tools/introduction/data-frames
-	frame, err := db.TransformDataForm(df)
-	if err != nil {
-		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("Error transforming dataform: %v", err.Error()))
-	}
+// 	// create data frame response.
+// 	// For an overview on data frames and how grafana handles them:
+// 	// https://grafana.com/developers/plugin-tools/introduction/data-frames
+// 	frame, err := db.TransformDataForm(df)
+// 	if err != nil {
+// 		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("Error transforming dataform: %v", err.Error()))
+// 	}
 
-	// add the frames to the response.
-	response.Frames = append(response.Frames, frame)
+// 	// add the frames to the response.
+// 	response.Frames = append(response.Frames, frame)
 
-	return response
-}
+// 	return response
+// }
 
 // CheckHealth handles health checks sent from Grafana to the plugin.
 // The main use case for these health checks is the test button on the
