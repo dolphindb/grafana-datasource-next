@@ -5,8 +5,8 @@ export interface DdbDataQuery extends DataQuery {
   is_streaming: boolean
   queryText?: string
   streaming?: {
-      table: string
-      action?: string
+    table: string
+    action?: string
   }
 }
 
@@ -26,8 +26,14 @@ export interface DataSourceResponse {
 /**
  * These are options configured for each DataSource instance
  */
-export interface MyDataSourceOptions extends DataSourceJsonData {
-  path?: string;
+export interface DataSourceOptions extends DataSourceJsonData {
+  url?: string
+  autologin?: boolean
+  username?: string
+  password?: string
+  python?: boolean
+  verbose?: boolean
+  poolCapacity?: number
 }
 
 /**

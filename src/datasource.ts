@@ -1,11 +1,11 @@
 import { DataSourceInstanceSettings, CoreApp, DataQueryResponse, MetricFindValue, DataQueryRequest, LiveChannelScope } from '@grafana/data';
 import { DataSourceWithBackend, getBackendSrv, getGrafanaLiveSrv, getTemplateSrv } from '@grafana/runtime';
 
-import { DdbDataQuery, MyDataSourceOptions, DEFAULT_QUERY } from './types';
+import { DdbDataQuery, DataSourceOptions, DEFAULT_QUERY } from './types';
 import { Observable } from 'rxjs';
 
-export class DataSource extends DataSourceWithBackend<DdbDataQuery, MyDataSourceOptions> {
-  constructor(instanceSettings: DataSourceInstanceSettings<MyDataSourceOptions>) {
+export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOptions> {
+  constructor(instanceSettings: DataSourceInstanceSettings<DataSourceOptions>) {
     console.log(instanceSettings)
     super(instanceSettings);
   }

@@ -155,7 +155,7 @@ func (d *Datasource) QueryData(ctx context.Context, req *backend.QueryDataReques
 
 		if task.IsSuccess() {
 			data := task.GetResult()
-			frame, err := db.TransformDataForm(data)
+			frame, err := db.TransformDataForm(data, fmt.Sprintf("Response %s", q.RefID))
 			if err != nil {
 				res = backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("Error transforming dataform: %v", err.Error()))
 			} else {
@@ -422,7 +422,7 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 			// log.DefaultLogger.Debug("Send Stream")
 			err := sender.SendFrame(
 				data.NewFrame(
-					"response",
+					fmt.Sprintf("Stream %s", qm.RefID),
 					data.NewField("time", nil, []time.Time{time.Now()}),
 					data.NewField("value", nil, []float64{randomValue})),
 				data.IncludeAll,

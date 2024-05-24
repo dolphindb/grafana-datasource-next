@@ -11,25 +11,25 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 )
 
-func TransformDataForm(dataform model.DataForm) (*data.Frame, error) {
+func TransformDataForm(dataform model.DataForm, framename string) (*data.Frame, error) {
 	// 获取 dataform 的类型
 	dataform_type := dataform.GetDataForm()
 
 	switch dataform_type {
 	case model.DfTable:
-		return transformTable(dataform.(*model.Table)), nil
+		return transformTable(dataform.(*model.Table), framename), nil
 	}
 	// 现在只支持转换 Table
-	frame := data.NewFrame("response")
+	frame := data.NewFrame(framename)
 	return frame, errors.New("do not support this dataform. only supports table")
 }
 
-func transformTable(table *model.Table) *data.Frame {
+func transformTable(table *model.Table, framename string) *data.Frame {
 	// columns count
 	columns := table.Columns()
 	columnnames := table.ColNames
 
-	frame := data.NewFrame("response")
+	frame := data.NewFrame(framename)
 
 	// log.DefaultLogger.Info("Frame")
 	// log.DefaultLogger.Info(spew.Sdump(frame))

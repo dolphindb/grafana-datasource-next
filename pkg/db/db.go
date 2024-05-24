@@ -3,6 +3,8 @@ package db
 import (
 	// "context"
 	// "fmt"
+	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/davecgh/go-spew/spew"
@@ -11,12 +13,13 @@ import (
 )
 
 type DBConfig struct {
-	Autologin bool
-	Password  string
-	Python    bool
-	URL       string
-	Username  string
-	Verbose   bool
+	Autologin    bool
+	Password     string
+	Python       bool
+	URL          string
+	Username     string
+	Verbose      bool
+	PoolCapacity string
 }
 
 type DataSource struct {
@@ -51,18 +54,23 @@ func GetDatasource(uuid string, config DBConfig) (*api.DBConnectionPool, error) 
 	log.DefaultLogger.Info("Get Connection Pool")
 	log.DefaultLogger.Info(spew.Sdump(config))
 
+	capacity, err := strconv.Atoi(config.PoolCapacity)
+	if err != nil {
+		return nil, fmt.Errorf("pool capacity convert to num error %v", err)
+	}
+
 	poolOpt := &api.PoolOption{
 		Address:  config.URL,
 		UserID:   config.Username,
 		Password: config.Password,
-		PoolSize: 10,
+		PoolSize: capacity,
 	}
 	pool, err := api.NewDBConnectionPool(poolOpt)
 
 	if err != nil {
 		return nil, err
 	}
-
+	log.DefaultLogger.Debug(fmt.Sprintf("Connected to DB connection pool with capacity %d", capacity))
 	// Store the new datasource
 	dataSourceMap[uuid] = &DataSource{
 		Conn:   pool,

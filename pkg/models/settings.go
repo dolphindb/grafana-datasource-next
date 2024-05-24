@@ -13,12 +13,13 @@ type PluginSettings struct {
 }
 
 type JSONData struct {
-	Autologin bool   `json:"autologin"`
-	Password  string `json:"password"`
-	Python    bool   `json:"python"`
-	URL       string `json:"url"`
-	Username  string `json:"username"`
-	Verbose   bool   `json:"verbose"`
+	Autologin    bool   `json:"autologin"`
+	Password     string `json:"password"`
+	Python       bool   `json:"python"`
+	URL          string `json:"url"`
+	Username     string `json:"username"`
+	Verbose      bool   `json:"verbose"`
+	PoolCapacity string    `json:"poolCapacity"`
 }
 
 func LoadPluginSettings(source backend.DataSourceInstanceSettings) (*PluginSettings, error) {
