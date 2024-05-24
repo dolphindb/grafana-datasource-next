@@ -1,5 +1,5 @@
-import { DataSourceInstanceSettings, CoreApp, DataQueryResponse, MetricFindValue, DataQueryRequest } from '@grafana/data';
-import { DataSourceWithBackend, getBackendSrv, getTemplateSrv } from '@grafana/runtime';
+import { DataSourceInstanceSettings, CoreApp, DataQueryResponse, MetricFindValue, DataQueryRequest, LiveChannelScope } from '@grafana/data';
+import { DataSourceWithBackend, getBackendSrv, getGrafanaLiveSrv, getTemplateSrv } from '@grafana/runtime';
 
 import { DdbDataQuery, MyDataSourceOptions, DEFAULT_QUERY } from './types';
 import { Observable } from 'rxjs';
@@ -42,7 +42,7 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, MyDataSource
         ...query, queryText: code_
       }
     });
-    // const streamingQueries = request.targets.filter(query => query.is_streaming);
+    const streamingQueries = request.targets.filter(query => query.is_streaming);
 
     return new Observable<DataQueryResponse>(subscriber => {
       /**
@@ -66,25 +66,43 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, MyDataSource
           // subscriber.complete();
         }
       });
+
+      /**
+       * 处理流数据
+       */
+      const observables = streamingQueries.map((query) => {
+        return getGrafanaLiveSrv().getDataStream({
+          addr: {
+            scope: LiveChannelScope.DataSource,
+            namespace: this.uid,
+            path: `ws/streaming-${query.refId}`, 
+            data: {
+              ...query,
+            },
+          },
+        });
+      });
+
+      observables.forEach(ob => {
+        ob.subscribe({
+          next(data) {
+            // 将数据传递给上层的 subscriber
+            subscriber.next(data);
+          },
+          error(err) {
+            // 传递错误给上层的 subscriber
+            subscriber.error(err);
+          },
+          complete() {
+            // 通知上层的 subscriber 数据流已完成
+            // 这里不能这么做，因为还有流式数据
+            // subscriber.complete();
+          }
+        })
+      })
     })
 
-    /**
-     * Streaming，待研究
-     */
-    // const observables = request.targets.map((query) => {
-    //   return getGrafanaLiveSrv().getDataStream({
-    //     addr: {
-    //       scope: LiveChannelScope.DataSource,
-    //       namespace: this.uid,
-    //       path: `my-ws/custom-${query.lowerLimit}-${query.upperLimit}`, // this will allow each new query to create a new connection
-    //       data: {
-    //         ...query,
-    //       },
-    //     },
-    //   });
-    // });
 
-    // return merge(...observables);
 
   }
 

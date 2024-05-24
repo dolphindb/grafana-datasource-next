@@ -4,16 +4,21 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net/http"
+	"path"
+	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/dolphin-db/dolphindb-datasource/pkg/db"
 	"github.com/dolphin-db/dolphindb-datasource/pkg/models"
+	"github.com/dolphin-db/dolphindb-datasource/pkg/websocket"
 	"github.com/dolphindb/api-go/api"
 	"github.com/dolphindb/api-go/model"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
+	"github.com/grafana/grafana-plugin-sdk-go/data"
 )
 
 // Make sure Datasource implements required interfaces. This is important to do
@@ -25,16 +30,42 @@ var (
 	_ backend.QueryDataHandler      = (*Datasource)(nil)
 	_ backend.CheckHealthHandler    = (*Datasource)(nil)
 	_ instancemgmt.InstanceDisposer = (*Datasource)(nil)
+	_ backend.StreamHandler         = (*Datasource)(nil) // Streaming data source needs to implement this
 )
 
 // NewDatasource creates a new datasource instance.
-func NewDatasource(_ context.Context, _ backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
-	return &Datasource{}, nil
+func NewDatasource(_ context.Context, s backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
+	settings, err := getDatasourceSettings(s)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Datasource{
+		channelPrefix: path.Join("ds", s.UID),
+		uri:           settings.URI,
+	}, nil
+}
+
+func getDatasourceSettings(s backend.DataSourceInstanceSettings) (*Options, error) {
+	settings := &Options{}
+
+	if err := json.Unmarshal(s.JSONData, settings); err != nil {
+		return nil, err
+	}
+
+	return settings, nil
 }
 
 // Datasource is an example datasource which can respond to data queries, reports
 // its health and has streaming skills.
-type Datasource struct{}
+type Datasource struct {
+	channelPrefix string
+	uri           string
+}
+
+type Options struct {
+	URI string `json:"uri"`
+}
 
 // Dispose here tells plugin SDK that plugin wants to clean up resources when a new instance
 // created. As soon as datasource settings change detected by SDK old datasource instance will
@@ -250,4 +281,67 @@ func sendErrorResponse(sender backend.CallResourceResponseSender, status int, er
 		Body:   data,
 	}
 	return sender.Send(&response)
+}
+
+// streaming
+func (d *Datasource) canConnect() bool {
+	c, err := websocket.NewClient(d.uri)
+	if err != nil {
+		return false
+	}
+	return c.Close() == nil
+}
+
+// SubscribeStream just returns an ok in this case, since we will always allow the user to successfully connect.
+// Permissions verifications could be done here. Check backend.StreamHandler docs for more details.
+func (d *Datasource) SubscribeStream(_ context.Context, req *backend.SubscribeStreamRequest) (*backend.SubscribeStreamResponse, error) {
+	return &backend.SubscribeStreamResponse{
+		Status: backend.SubscribeStreamStatusOK,
+	}, nil
+}
+
+// PublishStream just returns permission denied in this case, since in this example we don't want the user to send stream data.
+// Permissions verifications could be done here. Check backend.StreamHandler docs for more details.
+func (d *Datasource) PublishStream(context.Context, *backend.PublishStreamRequest) (*backend.PublishStreamResponse, error) {
+	return &backend.PublishStreamResponse{
+		Status: backend.PublishStreamStatusPermissionDenied,
+	}, nil
+}
+
+type Message struct {
+	Time  int64   `json:"time"`
+	Value float64 `json:"value"`
+}
+
+func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamRequest, sender *backend.StreamSender) error {
+
+	// log.DefaultLogger.Debug("Run Stream")
+	s := rand.NewSource(time.Now().UnixNano())
+	r := rand.New(s)
+
+	ticker := time.NewTicker(time.Duration(1000) * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+			// we generate a random value using the intervals provided by the frontend
+			randomValue := r.Float64()*(10-1) + 1
+
+			// log.DefaultLogger.Debug("Send Stream")
+			err := sender.SendFrame(
+				data.NewFrame(
+					"response",
+					data.NewField("time", nil, []time.Time{time.Now()}),
+					data.NewField("value", nil, []float64{randomValue})),
+				data.IncludeAll,
+			)
+
+			if err != nil {
+				log.DefaultLogger.Error("Failed send frame", "error", err)
+			}
+		}
+	}
 }
