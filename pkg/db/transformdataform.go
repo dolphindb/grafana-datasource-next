@@ -21,7 +21,7 @@ func TransformDataForm(dataform model.DataForm) (*data.Frame, error) {
 	}
 	// 现在只支持转换 Table
 	frame := data.NewFrame("response")
-	return frame, errors.New("unable to determine the data type of dataform")
+	return frame, errors.New("do not support this dataform. only supports table")
 }
 
 func transformTable(table *model.Table) *data.Frame {
