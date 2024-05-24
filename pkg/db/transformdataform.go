@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/davecgh/go-spew/spew"
+	// "github.com/davecgh/go-spew/spew"
 	"github.com/dolphindb/api-go/model"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
@@ -31,8 +31,8 @@ func transformTable(table *model.Table) *data.Frame {
 
 	frame := data.NewFrame("response")
 
-	log.DefaultLogger.Info("Frame")
-	log.DefaultLogger.Info(spew.Sdump(frame))
+	// log.DefaultLogger.Info("Frame")
+	// log.DefaultLogger.Info(spew.Sdump(frame))
 
 	for i := 0; i < columns; i++ {
 		columnData := table.GetColumnByIndex(i)
@@ -51,6 +51,7 @@ func transformTable(table *model.Table) *data.Frame {
 func TransformDataFormToValues(df model.DataForm) ([]map[string]interface{}, error) {
 	// 获取 dataform 的类型
 	dataform_type := df.GetDataForm()
+	// log.DefaultLogger.Debug("Transform to values dataform is %v", dataform_type)
 
 	switch dataform_type {
 	case model.DfTable:

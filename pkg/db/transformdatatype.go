@@ -2,13 +2,13 @@ package db
 
 import (
 	"errors"
-	"fmt"
+	// "fmt"
 	"reflect"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
+	// "github.com/davecgh/go-spew/spew"
 	"github.com/dolphindb/api-go/model"
-	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
+	// "github.com/grafana/grafana-plugin-sdk-go/backend/log"
 )
 
 // 类型映射，将 model.DataType 映射到对应的 Go 类型
@@ -88,11 +88,11 @@ func TransformVector(vector *model.Vector) (interface{}, error) {
 	// 获取类型
 	vectorType := vector.GetDataType()
 	vectorValue := vector.GetRawValue()
-	vectorTypeString := vector.GetDataTypeString()
+	// vectorTypeString := vector.GetDataTypeString()
 
 	// 用于调试数据类型转换
-	log.DefaultLogger.Debug(fmt.Sprintf("%d:%s", vectorType, vectorTypeString))
-	log.DefaultLogger.Debug(spew.Sdump(vectorValue[0]))
+	// log.DefaultLogger.Debug(fmt.Sprintf("%d:%s", vectorType, vectorTypeString))
+	// log.DefaultLogger.Debug(spew.Sdump(vectorValue[0]))
 
 	return ConvertSlice(vectorValue, vectorType)
 }
