@@ -96,6 +96,8 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 	var qm queryModel
 
 	err := json.Unmarshal(query.JSON, &qm)
+
+	// ！！重要：处理错误的示例
 	if err != nil {
 		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("json unmarshal: %v", err.Error()))
 	}
@@ -114,26 +116,26 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 
 	config, err := parseJSONData(pCtx.DataSourceInstanceSettings.JSONData)
 	if err != nil {
-		log.DefaultLogger.Error("Error parsing JSONData: %v", err)
+		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("Error parsing datasource settings: %v", err.Error()))
 	}
 
 	conn, err := db.GetDatasource(pCtx.DataSourceInstanceSettings.UID, config)
 	if err != nil {
-		log.DefaultLogger.Error("Error getting datasource: %v", err)
+		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("Error getting datasource: %v", err.Error()))
 	}
 
 	// tb, err := conn.RunScript(fmt.Sprintf("select * from loadTable('%s','%s')", "dfs://StockDB", "stockPrices"))
 	task := &api.Task{Script: qm.QueryText}
 	err = conn.Execute([]*api.Task{task})
 	if err != nil {
-		log.DefaultLogger.Error("Error run task: %v", err)
+		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("Error run query task: %v", err.Error()))
 	}
 	var data model.DataForm
 	if task.IsSuccess() {
 		data = task.GetResult()
 		// log.DefaultLogger.Debug("Task Result %s", spew.Sdump(data))
 	} else {
-		log.DefaultLogger.Error("Error run task: %v", task.GetError())
+		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("Error run query task: %v", task.GetError()))
 	}
 	df := data
 
@@ -142,7 +144,7 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 	// https://grafana.com/developers/plugin-tools/introduction/data-frames
 	frame, err := db.TransformDataForm(df)
 	if err != nil {
-		log.DefaultLogger.Error("Error transforming dataform: %v", err)
+		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("Error transforming dataform: %v", err.Error()))
 	}
 
 	// add the frames to the response.
