@@ -14,7 +14,7 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, MyDataSource
     const { range: { from, to }, scopedVars } = request
 
     // 非流
-    const commonQueries = request.targets.filter(query => !query.is_streaming).map(query => {
+    const commonQueriesTargets = request.targets.filter(query => !query.is_streaming).map(query => {
       const code = query.queryText ?? '';
       const tplsrv = getTemplateSrv();
       (from as any)._isUTC = false;
@@ -48,7 +48,7 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, MyDataSource
       /**
        * 处理非流数据
        */
-      const commonRequest = { ...request, query: commonQueries };
+      const commonRequest = { ...request, targets: commonQueriesTargets };
       const result = super.query(commonRequest);
       // 订阅 result 并将其数据传递给上层的 subscriber
       result.subscribe({
@@ -107,7 +107,6 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, MyDataSource
       respObservalbe.subscribe({
         next(data) {
           const metricFindValues = data.data as MetricFindValue[];
-          console.log(metricFindValues);
           res(metricFindValues)
         },
         error(err) {
