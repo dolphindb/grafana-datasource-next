@@ -12,7 +12,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/dolphin-db/dolphindb-datasource/pkg/db"
 	"github.com/dolphin-db/dolphindb-datasource/pkg/models"
-	"github.com/dolphin-db/dolphindb-datasource/pkg/websocket"
+	// "github.com/dolphin-db/dolphindb-datasource/pkg/websocket"
 	"github.com/dolphindb/api-go/api"
 	"github.com/dolphindb/api-go/model"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
@@ -283,14 +283,14 @@ func sendErrorResponse(sender backend.CallResourceResponseSender, status int, er
 	return sender.Send(&response)
 }
 
-// streaming
-func (d *Datasource) canConnect() bool {
-	c, err := websocket.NewClient(d.uri)
-	if err != nil {
-		return false
-	}
-	return c.Close() == nil
-}
+// 连通性检查，不知道为啥不需要
+// func (d *Datasource) canConnect() bool {
+// 	c, err := websocket.NewClient(d.uri)
+// 	if err != nil {
+// 		return false
+// 	}
+// 	return c.Close() == nil
+// }
 
 // SubscribeStream just returns an ok in this case, since we will always allow the user to successfully connect.
 // Permissions verifications could be done here. Check backend.StreamHandler docs for more details.
@@ -315,7 +315,15 @@ type Message struct {
 
 func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamRequest, sender *backend.StreamSender) error {
 
-	// log.DefaultLogger.Debug("Run Stream")
+	log.DefaultLogger.Debug("Run Stream Request")
+	// Unmarshal the JSON into our queryModel.
+	var qm queryModel
+
+	err := json.Unmarshal(req.Data, &qm)
+	if err != nil {
+		log.DefaultLogger.Error("Streaming request JSON Parse Error")
+	}
+	log.DefaultLogger.Debug(spew.Sdump(qm))
 	s := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(s)
 
@@ -325,6 +333,7 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 	for {
 		select {
 		case <-ctx.Done():
+			log.DefaultLogger.Debug("Context Done")
 			return ctx.Err()
 		case <-ticker.C:
 			// we generate a random value using the intervals provided by the frontend
