@@ -110,6 +110,7 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, MyDataSource
           res(metricFindValues)
         },
         error(err) {
+          console.log("MFQ Error", err)
           // 传递错误给上层的 subscriber
           rej(err)
         },

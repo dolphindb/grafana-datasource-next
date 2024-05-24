@@ -189,38 +189,44 @@ func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResource
 		config, err := parseJSONData(req.PluginContext.DataSourceInstanceSettings.JSONData)
 		if err != nil {
 			log.DefaultLogger.Error("Error parsing JSONData: %v", err)
+			return sendErrorResponse(sender, http.StatusBadRequest, err)
 		}
+
 		// 获取连接
 		conn, err := db.GetDatasource(req.PluginContext.DataSourceInstanceSettings.UID, config)
 		if err != nil {
 			log.DefaultLogger.Error("Error getting datasource: %v", err)
+			return sendErrorResponse(sender, http.StatusBadRequest, err)
 		}
 
 		// 执行查询
 		queryModel, err := parseMetricFindQueryJSONData(req.Body)
 		if err != nil {
-			log.DefaultLogger.Error("Error parse metric find query", err)
+			log.DefaultLogger.Error("Error parse metric find query: %v", err)
+			return sendErrorResponse(sender, http.StatusBadRequest, err)
 		}
 		task := &api.Task{Script: queryModel.Query}
 		err = conn.Execute([]*api.Task{task})
 		if err != nil {
 			log.DefaultLogger.Error("Error run task: %v", err)
+			return sendErrorResponse(sender, http.StatusBadRequest, err)
 		}
 		var df model.DataForm
 		if task.IsSuccess() {
 			df = task.GetResult()
 		} else {
 			log.DefaultLogger.Error("Error run task: %v", task.GetError())
+			return sendErrorResponse(sender, http.StatusBadRequest, task.GetError())
 		}
 		// 先看看数据再说
 		values, err := db.TransformDataFormToValues(df)
 		if err != nil {
 			log.DefaultLogger.Error(err.Error())
-			return err
+			return sendErrorResponse(sender, http.StatusBadRequest, err)
 		}
 		data, err := json.Marshal(values)
 		if err != nil {
-			return err
+			return sendErrorResponse(sender, http.StatusBadRequest, err)
 		}
 
 		response := backend.CallResourceResponse{
@@ -234,4 +240,14 @@ func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResource
 	return sender.Send(&backend.CallResourceResponse{
 		Status: http.StatusNotFound,
 	})
+}
+
+func sendErrorResponse(sender backend.CallResourceResponseSender, status int, err error) error {
+	errorResponse := map[string]string{"error": err.Error()}
+	data, _ := json.Marshal(errorResponse)
+	response := backend.CallResourceResponse{
+		Status: status,
+		Body:   data,
+	}
+	return sender.Send(&response)
 }

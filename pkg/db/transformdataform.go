@@ -51,6 +51,7 @@ func transformTable(table *model.Table) *data.Frame {
 func TransformDataFormToValues(df model.DataForm) ([]map[string]interface{}, error) {
 	// 获取 dataform 的类型
 	dataform_type := df.GetDataForm()
+	dataform_type_str := df.GetDataFormString()
 	// log.DefaultLogger.Debug("Transform to values dataform is %v", dataform_type)
 
 	switch dataform_type {
@@ -61,7 +62,7 @@ func TransformDataFormToValues(df model.DataForm) ([]map[string]interface{}, err
 		dt := df.(*model.Scalar).GetDataType()
 		value, err := ConvertValue(sc, dt)
 		if err != nil {
-			return []map[string]interface{}{}, errors.New("unable to transform dataform to values")
+			return []map[string]interface{}{}, fmt.Errorf("unable to transform dataform %s to values", dataform_type_str)
 		}
 		return []map[string]interface{}{
 			{"text": fmt.Sprintf("%v", value), "value": value},
