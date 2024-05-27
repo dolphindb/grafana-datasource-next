@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net/http"
 	"path"
+	"reflect"
 	"strconv"
 	"sync"
 	"time"
@@ -14,7 +15,6 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/dolphin-db/dolphindb-datasource/pkg/db"
 	"github.com/dolphin-db/dolphindb-datasource/pkg/models"
-
 
 	// "github.com/dolphin-db/dolphindb-datasource/pkg/websocket"
 	"github.com/dolphindb/api-go/api"
@@ -402,15 +402,23 @@ type Message struct {
 }
 
 type ddbStreamingHandler struct {
-	Ch chan int
+	Ch chan []*data.Field
+	tb (*model.Table)
 }
 
 func (handler *ddbStreamingHandler) DoEvent(msg streaming.IMessage) {
-	// dump 一下，看看怎么个事？
-	log.DefaultLogger.Debug("What is msg? dont hert me")
-	log.DefaultLogger.Debug(spew.Sdump(msg))
 
-	handler.Ch <- 1
+	var fields []*data.Field
+	// 拼了
+	for _, name := range handler.tb.ColNames {
+		colVal := msg.GetValueByName(name)
+		sc := colVal.(*model.Scalar).Value()
+		retSlice := reflect.MakeSlice(reflect.SliceOf(reflect.TypeOf(sc)), 1, 1)
+		retSlice.Index(0).Set(reflect.ValueOf(sc))
+		field := data.NewField(name, nil, retSlice.Interface())
+		fields = append(fields, field)
+	}
+	handler.Ch <- fields
 }
 
 func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamRequest, sender *backend.StreamSender) error {
@@ -427,7 +435,7 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 
 	// 接下来的是订阅流数据的代码
 	// 流数据订阅的 channel
-	ddbChan := make(chan int)
+	ddbChan := make(chan []*data.Field)
 
 	config, err := parseJSONData(req.PluginContext.DataSourceInstanceSettings.JSONData)
 	if err != nil {
@@ -437,21 +445,36 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 
 	rand.Seed(time.Now().UnixNano())
 
-	// 随机生成一个 1 到 10000 之间的整数
-	randomNumber := rand.Intn(10000) + 1
+	// 随机生成 action 数字，用于区分 action
+	randomNumber := rand.Intn(1000000) + 1 + time.Now().Second()
 
 	// 将整数转换为字符串
 	randomNumberStr := strconv.Itoa(randomNumber)
 
+	// 先获取列名
+	conn, err := db.GetDatasourceSimpleConn(req.PluginContext.DataSourceInstanceSettings.UID, config)
+	if err != nil {
+		return err
+	}
+
+	df, err := conn.RunScript(fmt.Sprintf("select top 1 * from %s", qm.Streaming.Table))
+	if err != nil {
+		return err
+	}
+	tb := df.(*model.Table)
+
 	client := streaming.NewGoroutineClient("localhost", 8101)
 	// actionName, _ := uuid.NewUUID()
+	// size := 1
 	subscribeReq := &streaming.SubscribeRequest{
 		Address:    config.URL,
 		TableName:  qm.Streaming.Table,
 		ActionName: fmt.Sprintf("action%s", randomNumberStr),
-		Handler:    &ddbStreamingHandler{Ch: ddbChan},
-		Offset:     0, // 忽略 Offset 试试能不能成功
+		Handler:    &ddbStreamingHandler{Ch: ddbChan, tb: tb},
+		// Offset:     0,
 		Reconnect: true,
+		// BatchSize:  &size,
+		// MsgAsTable: true,
 	}
 	log.DefaultLogger.Debug(spew.Sdump(subscribeReq))
 	err = client.Subscribe(subscribeReq)
@@ -460,30 +483,25 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 		log.DefaultLogger.Error(fmt.Sprintf("%v", err))
 	}
 
-	s := rand.NewSource(time.Now().UnixNano())
-	r := rand.New(s)
-
 	ticker := time.NewTicker(time.Duration(1000) * time.Millisecond)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
-			// 这里给出取消订阅的逻辑，比如取消流数据表订阅
+			// 取消流数据表订阅
 			log.DefaultLogger.Debug("Streaming terminated.")
-			// 停止订阅试试
 			client.UnSubscribe(subscribeReq)
 			return ctx.Err()
-		case <-ddbChan:
-			// we generate a random value using the intervals provided by the frontend
-			randomValue := r.Float64()*(10-1) + 1
-
+		case chanData := <-ddbChan:
+			// 收到流推送
+			frame := data.NewFrame(
+				fmt.Sprintf("Stream %s", qm.RefID),
+			)
+			frame.Fields = append(frame.Fields, chanData...)
 			// log.DefaultLogger.Debug("Send Stream")
 			err := sender.SendFrame(
-				data.NewFrame(
-					fmt.Sprintf("Stream %s", qm.RefID),
-					data.NewField("time", nil, []time.Time{time.Now()}),
-					data.NewField("value", nil, []float64{randomValue})),
+				frame,
 				data.IncludeAll,
 			)
 

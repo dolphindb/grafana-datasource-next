@@ -3,6 +3,7 @@ package db
 import (
 	// "context"
 	// "fmt"
+	"context"
 	"fmt"
 	"strconv"
 	"sync"
@@ -79,6 +80,55 @@ func GetDatasource(uuid string, config DBConfig) (*api.DBConnectionPool, error) 
 
 	return pool, nil
 }
+
+
+// 单独的 ddb 连接，轻量查询
+
+type DataSourceConn struct {
+    Conn   api.DolphinDB
+    Config DBConfig
+}
+
+var (
+    dataSourceConnMap     = make(map[string]*DataSourceConn)
+    dataSourceConnMapLock sync.RWMutex
+)
+
+
+// getDatasource returns a connection for the given UUID and DBConfig.
+func GetDatasourceSimpleConn(uuid string, config DBConfig) (api.DolphinDB, error) {
+    dataSourceConnMapLock.Lock()
+    defer dataSourceConnMapLock.Unlock()
+
+    // Check if the datasource already exists
+    if ds, exists := dataSourceConnMap[uuid]; exists {
+        if ds.Config == config {
+            // Config hasn't changed, return the existing connection
+            log.DefaultLogger.Info("Reused Connection")
+            return ds.Conn, nil
+        } else {
+            // Config has changed, close the old connection and create a new one
+            ds.Conn.Close()
+            delete(dataSourceConnMap, uuid)
+        }
+    }
+
+    // Create a new connection
+    log.DefaultLogger.Info("Get Connection")
+    conn, err := api.NewSimpleDolphinDBClient(context.TODO(), config.URL, config.Username, config.Password)
+    if err != nil {
+        return nil, err
+    }
+
+    // Store the new datasource
+    dataSourceConnMap[uuid] = &DataSourceConn{
+        Conn:   conn,
+        Config: config,
+    }
+
+    return conn, nil
+}
+
 
 // Example of how to use getDatasource
 // func LoadTableWithDatasource(uuid, dbPath, tbName string, config DBConfig) (interface{}, error) {

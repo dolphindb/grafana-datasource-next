@@ -75,7 +75,7 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
           addr: {
             scope: LiveChannelScope.DataSource,
             namespace: this.uid,
-            path: `ws/streaming-${query.refId}`,
+            path: `ws/streaming-${query.refId}-${query.streaming?.table ?? ''}`,
             data: {
               ...query,
             },
