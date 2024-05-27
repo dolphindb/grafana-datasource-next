@@ -13,6 +13,8 @@ services:
     ports:
       - 3000:3000/tcp
       - 2345:2345/tcp # delve
+      - 8101:8101/tcp
+      - 8101:8101/udp
     network_mode: host
     security_opt:
       - 'apparmor:unconfined'

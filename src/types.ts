@@ -33,7 +33,7 @@ export interface DataSourceOptions extends DataSourceJsonData {
   password?: string
   python?: boolean
   verbose?: boolean
-  poolCapacity?: number
+  poolCapacity?: string
 }
 
 /**

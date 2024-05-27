@@ -515,7 +515,7 @@ export function ConfigEditor({
     jsonData.password ??= '123456'
     jsonData.python ??= false
     jsonData.verbose ??= false
-    jsonData.poolCapacity ??= 10
+    jsonData.poolCapacity ??= '10'
 
     function on_change(option: keyof DataSourceConfig, checked?: boolean) {
         return (event: React.FormEvent<HTMLInputElement>) => {
@@ -575,7 +575,7 @@ export function ConfigEditor({
         <InlineField
             tooltip={t('该数据源绑定的连接池开启连接的数量')}
             label={t('连接池容量')}
-            // labelWidth={12}
+        // labelWidth={12}
         >
             <Input
                 value={options.jsonData.poolCapacity}

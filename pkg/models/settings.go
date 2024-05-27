@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
+	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 )
 
 type PluginSettings struct {
@@ -19,13 +20,14 @@ type JSONData struct {
 	URL          string `json:"url"`
 	Username     string `json:"username"`
 	Verbose      bool   `json:"verbose"`
-	PoolCapacity string    `json:"poolCapacity"`
+	PoolCapacity string `json:"poolCapacity"`
 }
 
 func LoadPluginSettings(source backend.DataSourceInstanceSettings) (*PluginSettings, error) {
 	settings := PluginSettings{}
 	err := json.Unmarshal(source.JSONData, &settings.JSONData)
 	if err != nil {
+		log.DefaultLogger.Error(fmt.Sprintf("error, %v", err))
 		return nil, fmt.Errorf("could not unmarshal PluginSettings json: %w", err)
 	}
 

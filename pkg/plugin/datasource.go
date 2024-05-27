@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net/http"
 	"path"
+	"strconv"
 	"sync"
 	"time"
 
@@ -14,9 +15,11 @@ import (
 	"github.com/dolphin-db/dolphindb-datasource/pkg/db"
 	"github.com/dolphin-db/dolphindb-datasource/pkg/models"
 
+
 	// "github.com/dolphin-db/dolphindb-datasource/pkg/websocket"
 	"github.com/dolphindb/api-go/api"
 	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/streaming"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
@@ -181,6 +184,10 @@ type queryModel struct {
 	MaxDataPoints int        `json:"maxDataPoints"`
 	RefID         string     `json:"refId"`
 	Hide          bool       `json:"hide"`
+	Streaming     struct {
+		Table  string `json:"table"`
+		Action string `json:"action,omitempty"`
+	} `json:"streaming,omitempty"`
 }
 
 func parseJSONData(jsonData json.RawMessage) (db.DBConfig, error) {
@@ -275,6 +282,7 @@ func (d *Datasource) CheckHealth(_ context.Context, req *backend.CheckHealthRequ
 	if err != nil {
 		res.Status = backend.HealthStatusError
 		res.Message = "Unable to load settings"
+		log.DefaultLogger.Error("Settings error")
 		return res, nil
 	}
 
@@ -393,6 +401,18 @@ type Message struct {
 	Value float64 `json:"value"`
 }
 
+type ddbStreamingHandler struct {
+	Ch chan int
+}
+
+func (handler *ddbStreamingHandler) DoEvent(msg streaming.IMessage) {
+	// dump 一下，看看怎么个事？
+	log.DefaultLogger.Debug("What is msg? dont hert me")
+	log.DefaultLogger.Debug(spew.Sdump(msg))
+
+	handler.Ch <- 1
+}
+
 func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamRequest, sender *backend.StreamSender) error {
 
 	log.DefaultLogger.Debug("Run Stream Request")
@@ -404,6 +424,42 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 		log.DefaultLogger.Error("Streaming request JSON Parse Error")
 	}
 	log.DefaultLogger.Debug(spew.Sdump(qm))
+
+	// 接下来的是订阅流数据的代码
+	// 流数据订阅的 channel
+	ddbChan := make(chan int)
+
+	config, err := parseJSONData(req.PluginContext.DataSourceInstanceSettings.JSONData)
+	if err != nil {
+		return err
+	}
+	log.DefaultLogger.Debug(spew.Sdump(config))
+
+	rand.Seed(time.Now().UnixNano())
+
+	// 随机生成一个 1 到 10000 之间的整数
+	randomNumber := rand.Intn(10000) + 1
+
+	// 将整数转换为字符串
+	randomNumberStr := strconv.Itoa(randomNumber)
+
+	client := streaming.NewGoroutineClient("localhost", 8101)
+	// actionName, _ := uuid.NewUUID()
+	subscribeReq := &streaming.SubscribeRequest{
+		Address:    config.URL,
+		TableName:  qm.Streaming.Table,
+		ActionName: fmt.Sprintf("action%s", randomNumberStr),
+		Handler:    &ddbStreamingHandler{Ch: ddbChan},
+		Offset:     0, // 忽略 Offset 试试能不能成功
+		Reconnect: true,
+	}
+	log.DefaultLogger.Debug(spew.Sdump(subscribeReq))
+	err = client.Subscribe(subscribeReq)
+	if err != nil {
+		log.DefaultLogger.Error("unable to subscribe streaming table tb")
+		log.DefaultLogger.Error(fmt.Sprintf("%v", err))
+	}
+
 	s := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(s)
 
@@ -415,8 +471,10 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 		case <-ctx.Done():
 			// 这里给出取消订阅的逻辑，比如取消流数据表订阅
 			log.DefaultLogger.Debug("Streaming terminated.")
+			// 停止订阅试试
+			client.UnSubscribe(subscribeReq)
 			return ctx.Err()
-		case <-ticker.C:
+		case <-ddbChan:
 			// we generate a random value using the intervals provided by the frontend
 			randomValue := r.Float64()*(10-1) + 1
 
