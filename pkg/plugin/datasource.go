@@ -441,7 +441,6 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 	if err != nil {
 		return err
 	}
-	log.DefaultLogger.Debug(spew.Sdump(config))
 
 	rand.Seed(time.Now().UnixNano())
 
@@ -479,12 +478,11 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 	log.DefaultLogger.Debug(spew.Sdump(subscribeReq))
 	err = client.Subscribe(subscribeReq)
 	if err != nil {
-		log.DefaultLogger.Error("unable to subscribe streaming table tb")
+		log.DefaultLogger.Error("unable to subscribe streaming table")
 		log.DefaultLogger.Error(fmt.Sprintf("%v", err))
 	}
 
-	ticker := time.NewTicker(time.Duration(1000) * time.Millisecond)
-	defer ticker.Stop()
+	log.DefaultLogger.Info("Subscribe to DB Streaming table complete.")
 
 	for {
 		select {
