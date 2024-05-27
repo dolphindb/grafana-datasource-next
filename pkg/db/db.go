@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/davecgh/go-spew/spew"
+	// "github.com/davecgh/go-spew/spew"
 	"github.com/dolphindb/api-go/api"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 )
@@ -52,8 +52,7 @@ func GetDatasource(uuid string, config DBConfig) (*api.DBConnectionPool, error) 
 	}
 
 	// Create a new connection
-	log.DefaultLogger.Info("Get Connection Pool")
-	log.DefaultLogger.Info(spew.Sdump(config))
+	log.DefaultLogger.Info("Connection to Connection Pool")
 
 	capacity, err := strconv.Atoi(config.PoolCapacity)
 	if err != nil {

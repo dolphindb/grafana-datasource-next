@@ -286,7 +286,7 @@ func (d *Datasource) CheckHealth(_ context.Context, req *backend.CheckHealthRequ
 		return res, nil
 	}
 
-	log.DefaultLogger.Info("The Config is")
+	log.DefaultLogger.Info("Checking Health with config:")
 	log.DefaultLogger.Info(spew.Sdump(config))
 	// if config.Secrets.ApiKey == "" {
 	// 	res.Status = backend.HealthStatusError
@@ -431,7 +431,6 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 	if err != nil {
 		log.DefaultLogger.Error("Streaming request JSON Parse Error")
 	}
-	log.DefaultLogger.Debug(spew.Sdump(qm))
 
 	// 接下来的是订阅流数据的代码
 	// 流数据订阅的 channel
@@ -475,7 +474,6 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 		// BatchSize:  &size,
 		// MsgAsTable: true,
 	}
-	log.DefaultLogger.Debug(spew.Sdump(subscribeReq))
 	err = client.Subscribe(subscribeReq)
 	if err != nil {
 		log.DefaultLogger.Error("unable to subscribe streaming table")
@@ -497,7 +495,7 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 				fmt.Sprintf("Stream %s", qm.RefID),
 			)
 			frame.Fields = append(frame.Fields, chanData...)
-			// log.DefaultLogger.Debug("Send Stream")
+
 			err := sender.SendFrame(
 				frame,
 				data.IncludeAll,
