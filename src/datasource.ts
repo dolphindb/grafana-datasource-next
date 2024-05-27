@@ -75,7 +75,7 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
           addr: {
             scope: LiveChannelScope.DataSource,
             namespace: this.uid,
-            path: `ws/streaming-${query.refId}`, 
+            path: `ws/streaming-${query.refId}`,
             data: {
               ...query,
             },
@@ -83,8 +83,8 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
         });
       });
 
-      observables.forEach(ob => {
-        ob.subscribe({
+      const subscribes = observables.map(ob => {
+        return ob.subscribe({
           next(data) {
             // 将数据传递给上层的 subscriber
             subscriber.next(data);
@@ -100,6 +100,12 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
           }
         })
       })
+
+      return () => {
+        // 取消流数据的订阅
+        subscribes.forEach(sub => sub.unsubscribe())
+      }
+
     })
 
 

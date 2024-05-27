@@ -413,7 +413,8 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 	for {
 		select {
 		case <-ctx.Done():
-			log.DefaultLogger.Debug("Context Done")
+			// 这里给出取消订阅的逻辑，比如取消流数据表订阅
+			log.DefaultLogger.Debug("Streaming terminated.")
 			return ctx.Err()
 		case <-ticker.C:
 			// we generate a random value using the intervals provided by the frontend
