@@ -67,6 +67,8 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
         }
       });
 
+      const isHide = streamingQueries.map(e => e.hide ?? false);
+
       /**
        * 处理流数据
        */
@@ -83,11 +85,12 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
         });
       });
 
-      const subscribes = observables.map(ob => {
+      const subscribes = observables.map((ob, index) => {
         return ob.subscribe({
           next(data) {
             // 将数据传递给上层的 subscriber
-            subscriber.next(data);
+            if (!isHide[index])
+              subscriber.next(data);
           },
           error(err) {
             // 传递错误给上层的 subscriber
