@@ -2,18 +2,22 @@
   "$schema": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/developers/plugins/plugin.schema.json",
   "type": "datasource",
   "name": "Dolphindb-Datasource",
-  "id": "dolphindb-dolphindb-datasource",
+  "id": "dolphindb-datasource-go",
   "metrics": true,
   "backend": true,
   "executable": "gpx_dolphindb_datasource",
   "alerting": true,
   "streaming": true,
   "info": {
-    "description": "Dolphin db grafana datasource",
+    "description": "DolphinDB grafana Plugin with server",
     "author": {
-      "name": "Dolphin db"
+      "name": "DolphinDB",
+      "url": "https://dolphindb.com"
     },
-    "keywords": ["datasource"],
+    "keywords": [
+      "datasource",
+      "DolphinDB"
+    ],
     "logos": {
       "small": "img/logo.svg",
       "large": "img/logo.svg"

@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
+	// "github.com/davecgh/go-spew/spew"
 	"github.com/dolphin-db/dolphindb-datasource/pkg/db"
 	"github.com/dolphin-db/dolphindb-datasource/pkg/models"
 
@@ -278,21 +278,25 @@ func parseMetricFindQueryJSONData(jsonData json.RawMessage) (metricFindQueryMode
 func (d *Datasource) CheckHealth(_ context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
 	res := &backend.CheckHealthResult{}
 	config, err := models.LoadPluginSettings(*req.PluginContext.DataSourceInstanceSettings)
-
 	if err != nil {
 		res.Status = backend.HealthStatusError
-		res.Message = "Unable to load settings"
-		log.DefaultLogger.Error("Settings error")
+		res.Message = "Settings parse error"
+		return res, nil
+	}
+	conn, err := db.GetDatasourceSimpleConn(req.PluginContext.DataSourceInstanceSettings.UID, db.DBConfig(config.JSONData))
+	if err != nil {
+		res.Status = backend.HealthStatusError
+		res.Message = fmt.Sprintf("Database connect error: %s", err.Error())
 		return res, nil
 	}
 
-	log.DefaultLogger.Info("Checking Health with config:")
-	log.DefaultLogger.Info(spew.Sdump(config))
-	// if config.Secrets.ApiKey == "" {
-	// 	res.Status = backend.HealthStatusError
-	// 	res.Message = "API key is missing"
-	// 	return res, nil
-	// }
+	// 测试一下执行语句
+	_, err = conn.RunScript("1")
+	if err != nil {
+		res.Status = backend.HealthStatusError
+		res.Message = fmt.Sprintf("Database test error: %s", err.Error())
+		return res, nil
+	}
 
 	return &backend.CheckHealthResult{
 		Status:  backend.HealthStatusOk,
