@@ -16,6 +16,7 @@ import { GrafanaPluginMetaExtractor } from '@grafana/plugin-meta-extractor';
 
 import { getPackageJson, getPluginJson, hasReadme, getEntries, isWSL } from './utils';
 import { SOURCE_DIR, DIST_DIR } from './constants';
+const os = require('os');
 
 const pluginJson = getPluginJson();
 
@@ -83,7 +84,7 @@ const config = async (env): Promise<Configuration> => {
             loader: 'swc-loader',
             options: {
               jsc: {
-                baseUrl: path.resolve(__dirname, 'src'),
+                baseUrl: os.platform() === 'win32' ? path.resolve('src') : path.resolve(__dirname, 'src'),
                 target: 'es2015',
                 loose: false,
                 parser: {
@@ -183,19 +184,19 @@ const config = async (env): Promise<Configuration> => {
       ]),
       ...(env.development
         ? [
-            new LiveReloadPlugin(),
-            // new ForkTsCheckerWebpackPlugin({
-            //   async: Boolean(env.development),
-            //   issue: {
-            //     include: [{ file: '**/*.{ts,tsx}' }],
-            //   },
-            //   typescript: { configFile: path.join(process.cwd(), 'tsconfig.json') },
-            // }),
-            // new ESLintPlugin({
-            //   extensions: ['.ts', '.tsx'],
-            //   lintDirtyModulesOnly: Boolean(env.development), // don't lint on start, only lint changed files
-            // }),
-          ]
+          new LiveReloadPlugin(),
+          // new ForkTsCheckerWebpackPlugin({
+          //   async: Boolean(env.development),
+          //   issue: {
+          //     include: [{ file: '**/*.{ts,tsx}' }],
+          //   },
+          //   typescript: { configFile: path.join(process.cwd(), 'tsconfig.json') },
+          // }),
+          // new ESLintPlugin({
+          //   extensions: ['.ts', '.tsx'],
+          //   lintDirtyModulesOnly: Boolean(env.development), // don't lint on start, only lint changed files
+          // }),
+        ]
         : []),
     ],
 
