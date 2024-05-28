@@ -103,5 +103,11 @@
     },
     "调试信息": {
         "en": "Debug Information"
+    },
+    "该数据源绑定的连接池开启连接的数量": {
+        "en": "The number of connections opened by the connection pool bound to this data source"
+    },
+    "连接池容量": {
+        "en": "Connection Pool Capacity"
     }
 }

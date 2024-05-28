@@ -584,6 +584,9 @@ export function ConfigEditor({
         </InlineField>
         <br />
 
+        {/*
+        Go API 暂时不支持 Python Parser Session，先不做
+
         <InlineField tooltip={t('(需要 v2.10.0 以上的 DolphinDB Server) 使用 Python Parser 来解释执行脚本, 默认 false')} label='Python' labelWidth={12}>
             <InlineSwitch
                 value={options.jsonData.python}
@@ -591,15 +594,18 @@ export function ConfigEditor({
             />
         </InlineField>
         <br />
+        */}
 
+        {/* 这个 Go API 也没有
         <InlineField tooltip={t('打印调试信息, 默认 false')} label={t('调试信息')} labelWidth={12}>
             <InlineSwitch
                 value={options.jsonData.verbose}
                 onChange={on_change('verbose', true)}
             />
         </InlineField>
+        */}
 
-        <div className='version'>({t('插件构建时间:')} {''})</div>
+        {/*<div className='version'>({t('插件构建时间:')} {''})</div>*/}
 
         {/* <div className='options'>
             { JSON.stringify(options) }
