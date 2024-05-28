@@ -469,8 +469,8 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 		TableName:  qm.Streaming.Table,
 		ActionName: fmt.Sprintf("action%s", randomNumberStr),
 		Handler:    &ddbStreamingHandler{Ch: ddbChan, tb: tb},
-		// Offset:     0,
-		Reconnect: true,
+		Offset:     -1,
+		Reconnect:  true,
 		// BatchSize:  &size,
 		// MsgAsTable: true,
 	}

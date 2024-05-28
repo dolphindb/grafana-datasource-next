@@ -543,6 +543,7 @@ export function ConfigEditor({
         </InlineField>
         <br />
 
+        {/* Go API 不支持不自动登录
         <InlineField tooltip={t('是否在建立连接后自动登录，默认 true')} label={t('自动登录')} labelWidth={12}>
             <InlineSwitch
                 value={options.jsonData.autologin}
@@ -550,27 +551,34 @@ export function ConfigEditor({
             />
         </InlineField>
         <br />
+        */}
 
-        {(options.jsonData.autologin || options.jsonData.autologin === undefined) && <>
-            <InlineField tooltip={t('DolphinDB 登录用户名')} label={t('用户名')} labelWidth={12}>
-                <Input
-                    value={options.jsonData.username}
-                    onChange={on_change('username', false)}
-                />
-            </InlineField>
-            <br />
-        </>}
+        {
+            // (options.jsonData.autologin || options.jsonData.autologin === undefined) && 
+            <>
+                <InlineField tooltip={t('DolphinDB 登录用户名')} label={t('用户名')} labelWidth={12}>
+                    <Input
+                        value={options.jsonData.username}
+                        onChange={on_change('username', false)}
+                    />
+                </InlineField>
+                <br />
+            </>
+        }
 
-        {(options.jsonData.autologin || options.jsonData.autologin === undefined) && <>
-            <InlineField tooltip={t('DolphinDB 登录密码')} label={t('密码')} labelWidth={12}>
-                <Input
-                    type='password'
-                    value={options.jsonData.password}
-                    onChange={on_change('password', false)}
-                />
-            </InlineField>
-            <br />
-        </>}
+        {
+            // (options.jsonData.autologin || options.jsonData.autologin === undefined) && 
+            <>
+                <InlineField tooltip={t('DolphinDB 登录密码')} label={t('密码')} labelWidth={12}>
+                    <Input
+                        type='password'
+                        value={options.jsonData.password}
+                        onChange={on_change('password', false)}
+                    />
+                </InlineField>
+                <br />
+            </>
+        }
 
         <InlineField
             tooltip={t('该数据源绑定的连接池开启连接的数量')}
