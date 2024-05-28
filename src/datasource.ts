@@ -154,7 +154,8 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
 
   filterQuery(query: DdbDataQuery): boolean {
     // if no query has been provided, prevent the query from being executed
-    return !!query.queryText;
+    // return !!query.queryText;
+    return true;
   }
 }
 
