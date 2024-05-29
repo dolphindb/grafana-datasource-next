@@ -20,8 +20,8 @@
     "使用 Python Parser 来解释执行脚本, 默认 false": {
         "en": "Use Python Parser to interpret and execute scripts, the default is false"
     },
-    "数据库连接地址 (WebSocket URL), 如: ws://127.0.0.1:8848, wss://dolphindb.com (HTTPS 加密)": {
-        "en": "Database connection URL (WebSocket URL), e.g. ws://127.0.0.1:8848, wss://dolphindb.com (HTTPS encrypted)"
+    "数据库连接地址 (WebSocket URL), 如: 127.0.0.1:8848": {
+        "en": "Database connection URL (WebSocket URL), e.g. 127.0.0.1:8848"
     },
     "DolphinDB Grafana 插件已加载": {
         "en": "DolphinDB Grafana plugin loaded"
