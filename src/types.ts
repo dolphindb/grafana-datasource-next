@@ -42,3 +42,18 @@ export interface DataSourceOptions extends DataSourceJsonData {
 export interface MySecureJsonData {
   apiKey?: string;
 }
+
+interface IQueryDataField {
+  config: {}
+  labels: string
+  name: string
+  state: {} | null
+  type: string
+  values: Array<any>
+}
+
+export interface IQueryResp {
+  fields: IQueryDataField[]
+}
+
+export type IQueryRespData = IQueryResp[]

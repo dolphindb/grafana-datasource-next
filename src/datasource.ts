@@ -1,8 +1,15 @@
 import { DataSourceInstanceSettings, CoreApp, DataQueryResponse, MetricFindValue, DataQueryRequest, LiveChannelScope } from '@grafana/data';
 import { DataSourceWithBackend, getBackendSrv, getGrafanaLiveSrv, getTemplateSrv } from '@grafana/runtime';
 
-import { DdbDataQuery, DataSourceOptions, DEFAULT_QUERY } from './types';
+import { DdbDataQuery, DataSourceOptions, DEFAULT_QUERY, IQueryRespData } from './types';
 import { Observable } from 'rxjs';
+
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOptions> {
   constructor(instanceSettings: DataSourceInstanceSettings<DataSourceOptions>) {
@@ -53,6 +60,7 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
       // 订阅 result 并将其数据传递给上层的 subscriber
       result.subscribe({
         next(data) {
+          data = { ...data, data: convertQueryRespTime(data.data) }
           // 将数据传递给上层的 subscriber
           subscriber.next(data);
         },
@@ -88,6 +96,7 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
       const subscribes = observables.map((ob, index) => {
         return ob.subscribe({
           next(data) {
+            data = { ...data, data: convertQueryRespTime(data.data) }
             // 将数据传递给上层的 subscriber
             if (!isHide[index])
               subscriber.next(data);
@@ -134,7 +143,19 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
       respObservalbe.subscribe({
         next(data) {
           const metricFindValues = data.data as MetricFindValue[];
-          res(metricFindValues)
+          const converted = metricFindValues.map(e => {
+            if (isValidISO8601(e?.value ?? "")) {
+              const trueTime = timestampToUTC(dayjs(e.value ?? 0).valueOf());
+              const trueTimeObj = dayjs(trueTime);
+              return {
+                text: trueTimeObj.format(),
+                value: trueTimeObj.toISOString()
+              }
+            }
+            return e;
+          })
+          console.log(converted)
+          res(converted)
         },
         error(err) {
           console.log("MFQ Error", err)
@@ -168,4 +189,28 @@ function var_formatter(value: string | string[], variable: any, default_formatte
     return JSON.stringify(variable)
 
   return default_formatter(value, 'json', variable)
+}
+
+function convertQueryRespTime(data: IQueryRespData) {
+  return data.map(item => {
+    return {
+      ...item, fields: item.fields.map(field => {
+        if (field.type === 'time') {
+          return { ...field, values: field.values.map((t: number) => timestampToUTC(t)) }
+        } return field
+      })
+    }
+  })
+}
+
+function timestampToUTC(timestamp: number) {
+  const time = dayjs(timestamp)
+  const timeString = time.utc().format('YYYY-MM-DD HH:mm:ss:SSS')
+  const trueTime = dayjs(timeString).tz(dayjs.tz.guess(), true)
+  return trueTime.valueOf()
+}
+
+function isValidISO8601(value: string | number): boolean {
+  const regex = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})Z$/;
+  return regex.test(value.toString());
 }
