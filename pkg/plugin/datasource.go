@@ -111,13 +111,6 @@ func (d *Datasource) QueryData(ctx context.Context, req *backend.QueryDataReques
 		return nil, err
 	}
 
-	conn, err := db.GetDatasource(req.PluginContext.DataSourceInstanceSettings.UID, config)
-	if err != nil {
-		return nil, err
-	}
-	// 不要关闭连接，之后可能复用呢
-	// defer conn.Close() // ensure the connection is closed when done
-
 	// create a slice to hold all tasks
 	tasks := make([]*api.Task, len(req.Queries))
 	queryMap := make(map[*api.Task]backend.DataQuery)
@@ -142,7 +135,7 @@ func (d *Datasource) QueryData(ctx context.Context, req *backend.QueryDataReques
 
 	// execute all tasks in parallel using the connection pool
 
-	err = conn.Execute(tasks)
+	err = db.RunPoolTasks(tasks, req.PluginContext.DataSourceInstanceSettings.UID, config)
 	if err != nil {
 		return nil, err
 	}
@@ -315,13 +308,6 @@ func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResource
 			return sendErrorResponse(sender, http.StatusBadRequest, err)
 		}
 
-		// 获取连接
-		conn, err := db.GetDatasource(req.PluginContext.DataSourceInstanceSettings.UID, config)
-		if err != nil {
-			log.DefaultLogger.Error("Error getting datasource: %v", err)
-			return sendErrorResponse(sender, http.StatusBadRequest, err)
-		}
-
 		// 执行查询
 		queryModel, err := parseMetricFindQueryJSONData(req.Body)
 		if err != nil {
@@ -329,7 +315,7 @@ func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResource
 			return sendErrorResponse(sender, http.StatusBadRequest, err)
 		}
 		task := &api.Task{Script: queryModel.Query}
-		err = conn.Execute([]*api.Task{task})
+		err = db.RunPoolTasks([]*api.Task{task}, req.PluginContext.DataSourceInstanceSettings.UID, config)
 		if err != nil {
 			log.DefaultLogger.Error("Error run task: %v", err)
 			return sendErrorResponse(sender, http.StatusBadRequest, err)
@@ -454,13 +440,10 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 	randomNumberStr := strconv.Itoa(randomNumber)
 
 	// 先获取列名
-	conn, err := db.GetDatasourceSimpleConn(req.PluginContext.DataSourceInstanceSettings.UID, config)
-	if err != nil {
-		return err
-	}
+	df, err := db.RunSimpleScript(fmt.Sprintf("select top 1 * from %s", qm.Streaming.Table), req.PluginContext.DataSourceInstanceSettings.UID, config)
 
-	df, err := conn.RunScript(fmt.Sprintf("select top 1 * from %s", qm.Streaming.Table))
 	if err != nil {
+		log.DefaultLogger.Error("Error get table structure")
 		return err
 	}
 	tb := df.(*model.Table)
