@@ -145,34 +145,38 @@ func GetDatasourceSimpleConn(uuid string, config DBConfig) (api.DolphinDB, error
 func RunPoolTasks(tasks []*api.Task, uuid string, config DBConfig) error {
 	var err error
 	for i := 0; i < 3; i++ {
-		conn, err := GetDatasource(uuid, config)
+		conn, err1 := GetDatasource(uuid, config)
 		isSuccess := true
-		if err != nil {
-			conn.Execute(tasks)		for _, task := range tasks {
-			if !task.IsSuccess() {
-				isSuccess = false
-			}
-			err = task.GetError()
-		}
-		} else {
+		// 只有连接 OK 才能查询
+		if err1 != nil {
 			isSuccess = false
+
+		} else {
+			conn.Execute(tasks)
+			for _, task := range tasks {
+				if !task.IsSuccess() {
+					isSuccess = false
+				}
+				err1 = task.GetError()
+			}
 		}
-
-
-		if err == nil && isSuccess {
+		if err1 == nil && isSuccess {
 			// 没有错误
 			return nil
 		} else {
 			log.DefaultLogger.Error(fmt.Sprintf("Error execute task, retring %d time", i+1))
 			// 删掉这个连接，重新来
-			err = conn.Close()
-			if err != nil {
-				log.DefaultLogger.Error("Error close pool connection")
+			if conn != nil {
+				err1 = conn.Close()
+				if err1 != nil {
+					log.DefaultLogger.Error("Error close pool connection")
+				}
 			}
 			dataSourceWithPoolMapLock.Lock()
 			delete(dataSourceWithPoolMap, uuid)
 			dataSourceWithPoolMapLock.Unlock()
 		}
+		err = err1
 	}
 	return err
 }

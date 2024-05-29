@@ -134,10 +134,12 @@ func (d *Datasource) QueryData(ctx context.Context, req *backend.QueryDataReques
 	}
 
 	// execute all tasks in parallel using the connection pool
-
 	err = db.RunPoolTasks(tasks, req.PluginContext.DataSourceInstanceSettings.UID, config)
+	isRunPoolTaskError := false
+	runPoolTaskErrorStr := ""
 	if err != nil {
-		return nil, err
+		isRunPoolTaskError = true
+		runPoolTaskErrorStr = err.Error()
 	}
 
 	// process results
@@ -148,6 +150,15 @@ func (d *Datasource) QueryData(ctx context.Context, req *backend.QueryDataReques
 
 		q := queryMap[task]
 		var res backend.DataResponse
+
+		if isRunPoolTaskError {
+			res = backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("Error running connection pool tasks: %v", runPoolTaskErrorStr))
+			mu.Lock()
+			response.Responses[q.RefID] = res
+			mu.Unlock()
+			// 整个任务执行都不行了，下面的就别干了
+			continue
+		}
 
 		if task.IsSuccess() {
 			data := task.GetResult()
