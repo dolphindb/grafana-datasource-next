@@ -1,133 +1,159 @@
-# Grafana data source plugin template
+# DolphinDB Grafana DataSource Plugin Go
 
-This template is a starting point for building a Data Source Plugin for Grafana.
+<p align='center'>
+    <img src='./ddb.svg' alt='DolphinDB Grafana DataSource' width='256'>
+</p>
 
-## What are Grafana data source plugins?
+<p align='center'>
+    <a href='https://github.com/dolphindb/api-go/releases' target='_blank'>
+        <img alt='Go package version' src='https://img.shields.io/github/v/release/dolphindb/api-go?label=api-go&style=flat-square' />
+    </a>
+</p>
 
-Grafana supports a wide range of data sources, including Prometheus, MySQL, and even Datadog. There’s a good chance you can already visualize metrics from the systems you have set up. In some cases, though, you already have an in-house metrics solution that you’d like to add to your Grafana dashboards. Grafana Data Source Plugins enables integrating such solutions with Grafana.
+## English | [中文](./README.zh.md)
 
-## Getting started
+Grafana is an open-source data visualization web application that excels at dynamically displaying time-series data and supports multiple data sources. By configuring connected data sources and writing query scripts, users can display data charts in the browser.
 
-### Backend
+DolphinDB has developed the Grafana data source plugin (dolphindb-datasource-go), allowing users to interact with DolphinDB by writing query scripts and subscribing to streaming tables on the Grafana dashboard, achieving visualization of DolphinDB time-series data.
 
-1. Update [Grafana plugin SDK for Go](https://grafana.com/developers/plugin-tools/introduction/grafana-plugin-sdk-for-go) dependency to the latest minor version:
+<img src='./demo.png' width='1200'>
 
-   ```bash
-   go get -u github.com/grafana/grafana-plugin-sdk-go
-   go mod tidy
-   ```
+## Installation Guide
 
-2. Build backend plugin binaries for Linux, Windows and Darwin:
+#### 1. Install Grafana
+Visit the Grafana official website: https://grafana.com/oss/grafana/ to download and install the latest open-source version (OSS, Open-Source Software).
 
-   ```bash
-   mage -v
-   ```
+#### 2. Install the dolphindb-datasource plugin
+Download the latest version of the plugin package from [releases](https://github.com/dolphindb/grafana-datasource/releases), such as `dolphindb-datasource.v2.0.900.zip`.
 
-3. List all available Mage targets for additional commands:
+Extract the dolphindb-datasource-go folder from the package to the following paths (create the plugins directory manually if it doesn't exist):
 
-   ```bash
-   mage -l
-   ```
+- Windows: `<grafana install directory>/data/plugins/`
+- Linux: `/var/lib/grafana/plugins/`
 
-### Frontend
+In the plugins directory, the file structure should look like this:
 
-1. Install dependencies
+```
+plugins
+├── dolphindb-datasource-go
+│   ├── LICENSE
+│   ├── README.md
+│   ├── components
+│   ├── go_plugin_build_manifest
+│   ├── gpx_dolphindb_datasource_windows_amd64.exe
+│   ├── img
+│   ├── module.js
+│   ├── static
+│   └── plugin.json
+├── other_plugin_1
+├── other_plugin_2
+└── ...
+```
 
-   ```bash
-   npm install
-   ```
+#### 3. Modify the Grafana configuration file to allow loading unsigned dolphindb-datasource plugins
+Read https://grafana.com/docs/grafana/latest/administration/configuration/#configuration-file-location  
+Open and edit the configuration file:
 
-2. Build plugin in development mode and run in watch mode
+Uncomment `allow_loading_unsigned_plugins` under the `[plugins]` section and set it to `dolphindb-datasource-go`, changing the following:
+```ini
+# Enter a comma-separated list of plugin identifiers to identify plugins to load even if they are unsigned. Plugins with modified signatures are never loaded.
+;allow_loading_unsigned_plugins =
+```
+to:
+```ini
+# Enter a comma-separated list of plugin identifiers to identify plugins to load even if they are unsigned. Plugins with modified signatures are never loaded.
+allow_loading_unsigned_plugins = dolphindb-datasource-go
+```
 
-   ```bash
-   npm run dev
-   ```
+Note: Every time you change the configuration, you need to restart Grafana.
 
-3. Build plugin in production mode
+#### 4. Start or restart the Grafana process or service
 
-   ```bash
-   npm run build
-   ```
+https://grafana.com/docs/grafana/latest/setup-grafana/start-restart-grafana/
 
-4. Run the tests (using Jest)
+### Verify Plugin Loading
+You should see logs similar to the following in the Grafana startup logs:
+```log
+WARN [05-19|12:05:48] Permitting unsigned plugin. This is not recommended logger=plugin.signature.validator pluginID=dolphindb-datasource-go pluginDir=<grafana install directory>/data/plugins/dolphindb-datasource-go
+```
 
-   ```bash
-   # Runs the tests and watches for changes, requires git init first
-   npm run test
+Log file paths:
+- Windows: `<grafana install directory>/data/log/grafana.log`
+- Linux: `/var/log/grafana/grafana.log`
 
-   # Exits after running all the tests
-   npm run test:ci
-   ```
+Or visit the following link and see that the DolphinDB plugin is in the Installed state:  
+http://localhost:3000/plugins
 
-5. Spin up a Grafana instance and run the plugin inside it (using Docker)
+## Usage Guide
 
-   ```bash
-   npm run server
-   ```
+### 1. Open and log in to Grafana
+Open http://localhost:3000  
+The initial username and password are both admin.
 
-6. Run the E2E tests (using Cypress)
+### 2. Create a new DolphinDB data source
+Open http://localhost:3000/datasources or click `Configuration > Data sources` in the left navigation to add a data source. Search for and select dolphindb, configure the data source, and click `Save & Test` to save the data source.
 
-   ```bash
-   # Spins up a Grafana instance first that we tests against
-   npm run server
+### 3. Create a new Panel to visualize DolphinDB time-series data by writing query scripts or subscribing to streaming tables
+Open or create a new Dashboard, edit or create a new Panel, and select the data source added in the previous step in the Data source property of the Panel.
 
-   # Starts the tests
-   npm run e2e
-   ```
+#### 3.1 Write a script to execute queries and visualize the returned time-series table
+1. Set the query type to `Script`.
+2. Write the query script, and the last statement of the code needs to return a table.
+3. After writing, press `Ctrl + S` to save, or click the refresh button (Refresh dashboard) on the page to send the Query to the DolphinDB database for execution and display the chart.
+4. Adjust the height of the code editor by dragging the bottom border.
+5. Click the `Save` button in the upper right corner to save the panel configuration.
 
-7. Run the linter
+The dolphindb-datasource plugin supports variables such as:
+- `$__timeFilter` variable: The value is the time range on the panel's timeline. For example, if the current timeline range is `2022-02-15 00:00:00 - 2022.02.17 00:00:00`, the `$__timeFilter` in the code will be replaced with `pair(2022.02.15 00:00:00.000, 2022.02.17 00:00:00.000)`.
+- `$__interval` and `$__interval_ms` variables: The values are the time grouping intervals automatically calculated by Grafana based on the timeline range and screen pixels. `$__interval` will be replaced by the corresponding DURATION type in DolphinDB; `$__interval_ms` will be replaced by milliseconds (integer).
+- Query variables: Generate dynamic values or option lists through SQL queries.
 
-   ```bash
-   npm run lint
+For more variables, please refer to https://grafana.com/docs/grafana/latest/variables/
 
-   # or
+#### 3.2 Subscribe to and visualize streaming tables in DolphinDB in real-time
+Requirements: DolphinDB server version not lower than 2.00.9 or 1.30.21  
+1. Set the query type to `Streaming Table`.
+2. Fill in the name of the streaming table to subscribe to.
+3. Click the Save button.
+4. Change the time range to `Last 5 minutes` (must include the current time, such as Last x hour/minutes/seconds, not a historical time range, otherwise no data will be visible).
+5. Click the `Save` button in the upper right corner to save the panel configuration.
 
-   npm run lint:fix
-   ```
+### 4. Refer to the documentation to learn how to use Grafana
+https://grafana.com/docs/grafana/latest/
 
-# Distributing your plugin
+### FAQ
+Q: How to set the dashboard auto-refresh interval?  
+A:   
+For script type, open the dashboard and select the auto-refresh interval from the dropdown menu to the right of the refresh button in the upper right corner.  
+For streaming table type, the data is real-time, no need to set.
 
-When distributing a Grafana plugin either within the community or privately the plugin must be signed so the Grafana application can verify its authenticity. This can be done with the `@grafana/sign-plugin` package.
+To customize the refresh interval, open `dashboard settings > Time options > Auto refresh` and enter the custom interval.  
+To define a refresh interval smaller than 5s, such as 1s, follow these steps:  
+Modify the Grafana configuration file:
+```ini
+[dashboards]
+min_refresh_interval = 1s
+```
+After modification, restart Grafana.  
+(Reference: https://community.grafana.com/t/how-to-change-refresh-rate-from-5s-to-1s/39008/2)
 
-_Note: It's not necessary to sign a plugin during development. The docker development environment that is scaffolded with `@grafana/create-plugin` caters for running the plugin without a signature._
+## Build and Development Guide
+```shell
+# Install the latest version of nodejs
+# https://nodejs.org/en/download/current/
 
-## Initial steps
+git clone https://github.com/dolphindb/grafana-datasource-go.git
 
-Before signing a plugin please read the Grafana [plugin publishing and signing criteria](https://grafana.com/legal/plugins/#plugin-publishing-and-signing-criteria) documentation carefully.
+cd grafana-datasource-go
 
-`@grafana/create-plugin` has added the necessary commands and workflows to make signing and distributing a plugin via the grafana plugins catalog as straightforward as possible.
+# Install project dependencies
+npm i
 
-Before signing a plugin for the first time please consult the Grafana [plugin signature levels](https://grafana.com/legal/plugins/#what-are-the-different-classifications-of-plugins) documentation to understand the differences between the types of signature level.
+# Development
+npm run dev
 
-1. Create a [Grafana Cloud account](https://grafana.com/signup).
-2. Make sure that the first part of the plugin ID matches the slug of your Grafana Cloud account.
-   - _You can find the plugin ID in the `plugin.json` file inside your plugin directory. For example, if your account slug is `acmecorp`, you need to prefix the plugin ID with `acmecorp-`._
-3. Create a Grafana Cloud API key with the `PluginPublisher` role.
-4. Keep a record of this API key as it will be required for signing a plugin
-
-## Signing a plugin
-
-### Using Github actions release workflow
-
-If the plugin is using the github actions supplied with `@grafana/create-plugin` signing a plugin is included out of the box. The [release workflow](./.github/workflows/release.yml) can prepare everything to make submitting your plugin to Grafana as easy as possible. Before being able to sign the plugin however a secret needs adding to the Github repository.
-
-1. Please navigate to "settings > secrets > actions" within your repo to create secrets.
-2. Click "New repository secret"
-3. Name the secret "GRAFANA_API_KEY"
-4. Paste your Grafana Cloud API key in the Secret field
-5. Click "Add secret"
-
-#### Push a version tag
-
-To trigger the workflow we need to push a version tag to github. This can be achieved with the following steps:
-
-1. Run `npm version <major|minor|patch>`
-2. Run `git push origin main --follow-tags`
-
-## Learn more
-
-Below you can find source code for existing app plugins and other related documentation.
-
-- [Basic data source plugin example](https://github.com/grafana/grafana-plugin-examples/tree/master/examples/datasource-basic#readme)
-- [`plugin.json` documentation](https://grafana.com/developers/plugin-tools/reference/plugin-json)
-- [How to sign a plugin?](https://grafana.com/developers/plugin-tools/publish-a-plugin/sign-a-plugin)
+# Build
+npm run build
+mage
+# After completion, the artifacts are in the dist folder. Rename out to dolphindb-datasource-go and compress it into a .zip file.
+```
