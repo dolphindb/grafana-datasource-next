@@ -532,7 +532,7 @@ export function ConfigEditor({
 
     return <div className='gf-form-group'>
         <InlineField
-            tooltip={t('数据库连接地址 (WebSocket URL), 如: ws://127.0.0.1:8848, wss://dolphindb.com (HTTPS 加密)')}
+            tooltip={t('数据库连接地址, 如: 127.0.0.1:8848')}
             label='URL'
             labelWidth={12}
         >
