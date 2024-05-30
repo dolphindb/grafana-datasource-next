@@ -112,7 +112,7 @@ For more variables, please refer to https://grafana.com/docs/grafana/latest/vari
 
 #### 3.2 Subscribe to and visualize streaming tables in DolphinDB in real-time
 Requirements: DolphinDB server version not lower than 2.00.9 or 1.30.21  
-1. Set the query type to `Streaming Table`.
+1. Set the query type to `Streaming`.
 2. Fill in the name of the streaming table to subscribe to.
 3. Click the Save button.
 4. Change the time range to `Last 5 minutes` (must include the current time, such as Last x hour/minutes/seconds, not a historical time range, otherwise no data will be visible).
