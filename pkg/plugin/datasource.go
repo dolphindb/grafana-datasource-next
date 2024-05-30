@@ -413,6 +413,11 @@ func (handler *ddbStreamingHandler) DoEvent(msg streaming.IMessage) {
 	// 拼了
 	for _, name := range handler.tb.ColNames {
 		colVal := msg.GetValueByName(name)
+		// 处理一下，不是 Scalar 就不要去转换并写入到 frame
+		valType := colVal.GetDataForm()
+		if valType != model.DfScalar {
+			continue
+		}
 		sc := colVal.(*model.Scalar).Value()
 		retSlice := reflect.MakeSlice(reflect.SliceOf(reflect.TypeOf(sc)), 1, 1)
 		retSlice.Index(0).Set(reflect.ValueOf(sc))
