@@ -694,7 +694,7 @@ export function QueryEditor(
                                         is_streaming,
                                         queryText,
                                         streaming: {
-                                            table: value || (streaming?.table ?? ""),
+                                            table: value ?? (streaming?.table ?? ""),
                                         }
                                     })
                                 }} />
