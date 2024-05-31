@@ -2,7 +2,7 @@ import { DataSourceInstanceSettings, CoreApp, DataQueryResponse, MetricFindValue
 import { DataSourceWithBackend, getBackendSrv, getGrafanaLiveSrv, getTemplateSrv } from '@grafana/runtime';
 
 import { DdbDataQuery, DataSourceOptions, DEFAULT_QUERY, IQueryRespData } from './types';
-import { Observable } from 'rxjs';
+import { Observable, retry } from 'rxjs';
 
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -50,6 +50,7 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
       }
     });
     const streamingQueries = request.targets.filter(query => query.is_streaming);
+    const isHaveStreamingQuery = streamingQueries.length > 0
 
     return new Observable<DataQueryResponse>(subscriber => {
       /**
@@ -70,8 +71,12 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
         },
         complete() {
           // 通知上层的 subscriber 数据流已完成
-          // 这里不能这么做，因为还有流式数据
-          // subscriber.complete();
+          // 有流数据共存的情况，这里会怎样？
+          // 有流数据就不能 complete，在数据源只有 DDB 的时候问题不大，但是要是 Mixed 就不能同时存在任何流数据
+          // 这是 Grafana 设计的 bug，Mixed 必须要 subscriber.complete 才能完成查询，否则一直 pending
+          // 但是流数据又要求不能将 subscriber complete, 否则接受不了后面的数据
+          if (!isHaveStreamingQuery)
+            subscriber.complete();
         }
       });
 
