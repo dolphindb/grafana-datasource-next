@@ -63,7 +63,9 @@ func GetTypeFromMap(t model.DataTypeByte) reflect.Type {
 func ConvertValue(val interface{}, dataType model.DataTypeByte) (reflect.Value, error) {
 
 	switch dataType {
-	case model.DtDecimal32, model.DtDecimal64:
+	case model.DtDecimal32:
+		val = val.(*model.Decimal32).Value
+	case model.DtDecimal64:
 		val = val.(*model.Decimal64).Value
 	case model.DtDecimal128:
 		val = val.(*model.Decimal128).Value
