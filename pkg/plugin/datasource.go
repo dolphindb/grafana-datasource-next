@@ -417,19 +417,16 @@ func (handler *ddbStreamingHandler) DoEvent(msg streaming.IMessage) {
 		if valType != model.DfScalar {
 			continue
 		}
-		sc := colVal.(*model.Scalar).Value()
 		scType := colVal.(*model.Scalar).GetDataType()
+		// 必须满足目标类型，先建立目标类型的 Slice
+		retSlice := reflect.MakeSlice(reflect.SliceOf(reflect.PointerTo(db.GetTypeFromMap(scType))), 1, 1)
+		sc := colVal.(*model.Scalar).Value()
 		retVal, err := db.ConvertValue(sc, scType)
 		if err != nil {
-			log.DefaultLogger.Warn(err.Error())
-			retSlice := reflect.MakeSlice(reflect.SliceOf(reflect.TypeOf("")), 1, 1)
+			// 这个值就不存了
+		} else {
 			retSlice.Index(0).Set(retVal)
-			field := data.NewField(name, nil, retSlice.Interface())
-			fields = append(fields, field)
-			continue
 		}
-		retSlice := reflect.MakeSlice(reflect.SliceOf(reflect.TypeOf(sc)), 1, 1)
-		retSlice.Index(0).Set(retVal)
 		field := data.NewField(name, nil, retSlice.Interface())
 		fields = append(fields, field)
 	}

@@ -65,7 +65,7 @@ func TransformDataFormToValues(df model.DataForm) ([]map[string]interface{}, err
 			return []map[string]interface{}{}, fmt.Errorf("unable to transform dataform %s to values", dataform_type_str)
 		}
 		return []map[string]interface{}{
-			{"text": fmt.Sprintf("%v", value), "value": value},
+			{"text": fmt.Sprintf("%v", value.Elem()), "value": value.Interface()},
 		}, nil
 	case model.DfVector, model.DfPair, model.DfSet:
 		var slice interface{}
@@ -129,8 +129,9 @@ func convertValues(columnValues interface{}) ([]map[string]interface{}, error) {
 	result := make([]map[string]interface{}, v.Len())
 	for i := 0; i < v.Len(); i++ {
 		value := v.Index(i).Interface()
+		elem := v.Index(i).Elem()
 		result[i] = map[string]interface{}{
-			"text":  fmt.Sprintf("%v", value),
+			"text":  fmt.Sprintf("%v", elem),
 			"value": value,
 		}
 	}

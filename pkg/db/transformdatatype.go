@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"time"
 
-	// "github.com/davecgh/go-spew/spew"
 	"github.com/dolphindb/api-go/model"
 	// "github.com/grafana/grafana-plugin-sdk-go/backend/log"
 )
@@ -41,24 +40,49 @@ var typeMap = map[model.DataTypeByte]reflect.Type{
 	model.DtUUID:          reflect.TypeOf(""),
 	// SymbolExtend 疑似没有枚举？
 	145: reflect.TypeOf(""),
+	// 补充
+	model.DtDecimal32: reflect.TypeOf(float64(0)),
+}
+
+func GetTypeFromMap(t model.DataTypeByte) reflect.Type {
+	targetType, ok := typeMap[t]
+	if !ok {
+		return reflect.TypeOf("")
+	}
+	return targetType
 }
 
 // convertValue 将值转换为指定类型
 func ConvertValue(val interface{}, dataType model.DataTypeByte) (reflect.Value, error) {
 
+	if dataType == model.DtDecimal32 {
+		val = val.(*model.Decimal32).Value
+	}
+
 	// 通用转换逻辑，只进行数据转换，不额外操作
 	// 如果找不到指定的数据类型或者转换失败，则报错并返回一个空值
 	targetType, ok := typeMap[dataType]
 	if !ok {
-		return reflect.ValueOf("__DDB_DS_UDT"), errors.New("unsupported data type")
-	}
-	value := reflect.ValueOf(val)
-	if !value.Type().ConvertibleTo(targetType) {
-		return reflect.ValueOf("__DDB_DS_TAF"), errors.New("type assertion failed")
+		return reflect.ValueOf(nil), errors.New("unsupported data type")
 	}
 
-	// 转换
-	return value.Convert(targetType), nil
+	// 获取目标类型的指针类型
+	// ptrType := reflect.PtrTo(targetType)
+
+	// 使用 reflect.ValueOf(val) 获取 val 的 reflect.Value
+	valValue := reflect.ValueOf(val)
+
+	// 确保 val 的类型可以转换为 targetType
+	if !valValue.Type().ConvertibleTo(targetType) {
+		return reflect.ValueOf(nil), errors.New("type assertion failed")
+	}
+
+	// 创建目标类型的指针，并将 val 转换为目标类型后赋值给该指针
+	ptrValue := reflect.New(targetType).Elem()
+	ptrValue.Set(valValue.Convert(targetType))
+
+	// 返回指针类型的 reflect.Value
+	return ptrValue.Addr(), nil
 }
 
 // convertSlice 转换切片中的元素类型
@@ -72,11 +96,13 @@ func ConvertSlice(input []interface{}, vectorType model.DataTypeByte) (interface
 	if !ok {
 		return nil, errors.New("unsupported vector type")
 	}
-	output := reflect.MakeSlice(reflect.SliceOf(targetType), len(input), len(input))
+	output := reflect.MakeSlice(reflect.SliceOf(reflect.PointerTo(targetType)), len(input), len(input))
 	for i, val := range input {
 		convertedValue, err := ConvertValue(val, vectorType)
 		if err != nil {
-			return nil, err
+			// 这个值就不设置了
+			continue
+			// return nil, err
 		}
 		output.Index(i).Set(convertedValue)
 	}
