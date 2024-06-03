@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	// "github.com/davecgh/go-spew/spew"
 	"github.com/dolphin-db/dolphindb-datasource/pkg/db"
 	"github.com/dolphin-db/dolphindb-datasource/pkg/models"
 
@@ -419,8 +418,18 @@ func (handler *ddbStreamingHandler) DoEvent(msg streaming.IMessage) {
 			continue
 		}
 		sc := colVal.(*model.Scalar).Value()
+		scType := colVal.(*model.Scalar).GetDataType()
+		retVal, err := db.ConvertValue(sc, scType)
+		if err != nil {
+			log.DefaultLogger.Warn(err.Error())
+			retSlice := reflect.MakeSlice(reflect.SliceOf(reflect.TypeOf("")), 1, 1)
+			retSlice.Index(0).Set(retVal)
+			field := data.NewField(name, nil, retSlice.Interface())
+			fields = append(fields, field)
+			continue
+		}
 		retSlice := reflect.MakeSlice(reflect.SliceOf(reflect.TypeOf(sc)), 1, 1)
-		retSlice.Index(0).Set(reflect.ValueOf(sc))
+		retSlice.Index(0).Set(retVal)
 		field := data.NewField(name, nil, retSlice.Interface())
 		fields = append(fields, field)
 	}

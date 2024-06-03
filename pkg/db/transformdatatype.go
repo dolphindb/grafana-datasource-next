@@ -50,11 +50,11 @@ func ConvertValue(val interface{}, dataType model.DataTypeByte) (reflect.Value, 
 	// 如果找不到指定的数据类型或者转换失败，则报错并返回一个空值
 	targetType, ok := typeMap[dataType]
 	if !ok {
-		return reflect.Value{}, errors.New("unsupported data type")
+		return reflect.ValueOf("__DDB_DS_UDT"), errors.New("unsupported data type")
 	}
 	value := reflect.ValueOf(val)
 	if !value.Type().ConvertibleTo(targetType) {
-		return reflect.Value{}, errors.New("type assertion failed")
+		return reflect.ValueOf("__DDB_DS_TAF"), errors.New("type assertion failed")
 	}
 
 	// 转换

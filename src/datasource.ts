@@ -202,7 +202,14 @@ function convertQueryRespTime(data: IQueryRespData) {
       ...item, fields: item.fields.map(field => {
         if (field.type === 'time') {
           return { ...field, values: field.values.map((t: number) => timestampToUTC(t)) }
-        } return field
+        } return {
+          ...field, values: field.values.map((item) => {
+            if (item === "__DDB_DS_UDT" || item === "__DDB_DS_TAF") {
+              return null
+            }
+            return item;
+          })
+        }
       })
     }
   })
