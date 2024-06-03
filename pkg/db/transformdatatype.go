@@ -6,7 +6,9 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/dolphindb/api-go/model"
+	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	// "github.com/grafana/grafana-plugin-sdk-go/backend/log"
 )
 
@@ -41,7 +43,12 @@ var typeMap = map[model.DataTypeByte]reflect.Type{
 	// SymbolExtend 疑似没有枚举？
 	145: reflect.TypeOf(""),
 	// 补充
-	model.DtDecimal32: reflect.TypeOf(float64(0)),
+	model.DtDecimal32:  reflect.TypeOf(float64(0)),
+	model.DtDecimal64:  reflect.TypeOf(float64(0)),
+	model.DtDecimal128: reflect.TypeOf(""),
+	model.DtBlob:       reflect.TypeOf(""),
+	model.DtDuration:   reflect.TypeOf(""),
+	model.DtVoid:       reflect.TypeOf(""),
 }
 
 func GetTypeFromMap(t model.DataTypeByte) reflect.Type {
@@ -55,14 +62,21 @@ func GetTypeFromMap(t model.DataTypeByte) reflect.Type {
 // convertValue 将值转换为指定类型
 func ConvertValue(val interface{}, dataType model.DataTypeByte) (reflect.Value, error) {
 
-	if dataType == model.DtDecimal32 {
-		val = val.(*model.Decimal32).Value
+	switch dataType {
+	case model.DtDecimal32, model.DtDecimal64:
+		val = val.(*model.Decimal64).Value
+	case model.DtDecimal128:
+		val = val.(*model.Decimal128).Value
+	case model.DtBlob:
+		val = string(val.([]byte))
 	}
 
 	// 通用转换逻辑，只进行数据转换，不额外操作
 	// 如果找不到指定的数据类型或者转换失败，则报错并返回一个空值
 	targetType, ok := typeMap[dataType]
 	if !ok {
+		log.DefaultLogger.Debug("Datatype need to support:")
+		log.DefaultLogger.Debug(spew.Sdump(val))
 		return reflect.ValueOf(nil), errors.New("unsupported data type")
 	}
 

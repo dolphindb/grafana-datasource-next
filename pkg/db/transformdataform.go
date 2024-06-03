@@ -88,7 +88,7 @@ func TransformDataFormToValues(df model.DataForm) ([]map[string]interface{}, err
 		return values, nil
 	}
 	// 兜底逻辑，什么也不返回
-	return []map[string]interface{}{}, errors.New("unable to transform dataform to values")
+	return []map[string]interface{}{}, fmt.Errorf("unable to transform dataform %s to values", dataform_type_str)
 }
 
 func transformTableToValues(tb *model.Table) ([]map[string]interface{}, error) {
