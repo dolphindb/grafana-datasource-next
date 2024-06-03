@@ -422,7 +422,7 @@ func (handler *ddbStreamingHandler) DoEvent(msg streaming.IMessage) {
 		retSlice := reflect.MakeSlice(reflect.SliceOf(reflect.PointerTo(db.GetTypeFromMap(scType))), 1, 1)
 		sc := colVal.(*model.Scalar).Value()
 		retVal, err := db.ConvertValue(sc, scType)
-		if err != nil {
+		if err != nil || colVal.(*model.Scalar).IsNull() {
 			// 这个值就不存了
 		} else {
 			retSlice.Index(0).Set(retVal)
