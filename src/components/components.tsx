@@ -657,12 +657,8 @@ export function QueryEditor(
                     isMulti={false}
                     onChange={v => {
                         onChange({
-                            refId: query.refId,
+                            ...query,
                             is_streaming: v.value === 'streaming',
-                            queryText: query.queryText,
-                            streaming: {
-                                table: query.streaming?.table ?? "",
-                            }
                         })
 
                         set_type(v)
@@ -674,7 +670,7 @@ export function QueryEditor(
         <div className={`query-editor-content ${type.value === 'script' ? '' : 'query-editor-content-none'}`}>
             <DdbCodeEditor
                 query={query}
-                onChange={(data) => { onChange({ ...query, queryText: data.queryText ?? '' }) }}
+                onChange={(data) => { onChange({ ...query, is_streaming: false, queryText: data.queryText ?? '' }) }}
                 onRunQuery={onRunQuery}
                 datasource={datasource}
             />
@@ -690,11 +686,10 @@ export function QueryEditor(
                                 onChange={event => {
                                     const { value } = event.currentTarget
                                     onChange({
-                                        refId,
-                                        is_streaming,
-                                        queryText,
+                                        ...query,
+                                        is_streaming: true,
                                         streaming: {
-                                            table: value ?? (streaming?.table ?? ""),
+                                            table: value,
                                         }
                                     })
                                 }} />

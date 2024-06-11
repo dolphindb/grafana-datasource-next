@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	// "github.com/davecgh/go-spew/spew"
 	"github.com/dolphin-db/dolphindb-datasource/pkg/db"
 	"github.com/dolphin-db/dolphindb-datasource/pkg/models"
 
@@ -418,9 +417,16 @@ func (handler *ddbStreamingHandler) DoEvent(msg streaming.IMessage) {
 		if valType != model.DfScalar {
 			continue
 		}
+		scType := colVal.(*model.Scalar).GetDataType()
+		// 必须满足目标类型，先建立目标类型的 Slice
+		retSlice := reflect.MakeSlice(reflect.SliceOf(reflect.PointerTo(db.GetTypeFromMap(scType))), 1, 1)
 		sc := colVal.(*model.Scalar).Value()
-		retSlice := reflect.MakeSlice(reflect.SliceOf(reflect.TypeOf(sc)), 1, 1)
-		retSlice.Index(0).Set(reflect.ValueOf(sc))
+		retVal, err := db.ConvertValue(sc, scType)
+		if err != nil || colVal.(*model.Scalar).IsNull() {
+			// 这个值就不存了
+		} else {
+			retSlice.Index(0).Set(retVal)
+		}
 		field := data.NewField(name, nil, retSlice.Interface())
 		fields = append(fields, field)
 	}
