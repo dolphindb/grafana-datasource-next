@@ -16,7 +16,7 @@ Grafana is an open-source data visualization web application that excels at dyna
 
 DolphinDB has developed the Grafana data source plugin (dolphindb-datasource-go), allowing users to interact with DolphinDB by writing query scripts and subscribing to streaming tables on the Grafana dashboard, achieving visualization of DolphinDB time-series data.
 
-<img src='./demo.png' width='1200'>
+<img src='./img/en/demo.png' width='1200'>
 
 ## Installation Guide
 

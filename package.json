@@ -1,6 +1,6 @@
 {
-  "name": "dolphindb-datasource",
-  "version": "1.0.0",
+  "name": "dolphindb-datasource-go",
+  "version": "3.0.1",
   "description": "Dolphin db grafana datasource",
   "scripts": {
     "build": "webpack -c ./.config/webpack/webpack.config.ts --env production",

@@ -13,22 +13,22 @@
 
 ## [English](./README.md) | 中文
 
-Grafana 是一个开源的数据可视化 Web 应用程序，擅长动态展示时序数据，支持多种数据源。用户通过配置连接的数据源，编写查询脚本，可在浏览器中展示数据图表。
+DolphinDB 特别提供了 dolphindb-datasource-go 数据源插件。该插件使用 Go 语言编写，运行在 Grafana 后端，支持用户在 Grafana 面板上实现 DolphinDB 时序数据的可视化。
 
-DolphinDB 开发了 Grafana 数据源插件 (dolphindb-datasource-go)，让用户在 Grafana 面板 (dashboard) 上通过编写查询脚本、订阅流数据表的方式，与 DolphinDB 进行交互，实现 DolphinDB 时序数据的可视化。
+注意：使用该插件需要 Grafana Server 和数据库部署在同一网络下，或 Grafana Server 可以连接到数据库。
 
-<img src='./demo.png' width='1200'>
+<img src='./img/demo.png' width='1200'>
 
 ## 安装方法
 #### 1. 安装 Grafana
 前往 Grafana 官网: https://grafana.com/oss/grafana/ 下载并安装最新的开源版本 (OSS, Open-Source Software)
 
 #### 2. 安装 dolphindb-datasource 插件
-在 [releases](https://github.com/dolphindb/grafana-datasource/releases) 中下载最新版本的插件压缩包，如 `dolphindb-datasource.v2.0.900.zip`
+在 [Github-grafana_datasource-Releases](https://github.com/dolphindb/grafana-datasource/releases) 中下载最新版本的插件压缩包，如 `dolphindb-datasource.v2.0.900.zip`
 
 将压缩包中的 dolphindb-datasource-go 文件夹解压到以下路径（如果不存在 plugins 目录，可手动创建）:
 
-- Windows: `<grafana 安装目录>/data/plugins/`
+- Windows: `<grafana 安装目录>\data\plugins\`
 - Linux: `/var/lib/grafana/plugins/`
 
 在 plugin 目录下，应形成形如以下的文件结构：
@@ -51,8 +51,7 @@ plugins
 ```
 
 #### 3. 修改 Grafana 配置文件，使其允许加载未签名的 dolphindb-datasource 插件
-阅读 https://grafana.com/docs/grafana/latest/administration/configuration/#configuration-file-location  
-打开并编辑配置文件： 
+推荐用户阅读 [Grafana 配置说明文档](https://grafana.com/docs/grafana/latest/administration/configuration/#configuration-file-location)，然后打开并编辑配置文件。
 
 在 `[plugins]` 部分下面取消注释 `allow_loading_unsigned_plugins`，并配置为 `dolphindb-datasource-go`，即把下面的
 ```ini
@@ -130,12 +129,12 @@ A:
 
 如果需要自定义刷新间隔，可以打开 `dashboard settings > Time options > Auto refresh`, 输入自定义的间隔
 如果需要定义比 5s 更小的刷新间隔，比如 1s，需要按下面的方法操作:  
-修改 Grafana 配置文件
+1.修改 Grafana 配置文件
 ```ini
 [dashboards]
 min_refresh_interval = 1s
 ```
-修改完后重启 Grafana  
+2.修改完后重启 Grafana  
 (参考: https://community.grafana.com/t/how-to-change-refresh-rate-from-5s-to-1s/39008/2)
 
 
