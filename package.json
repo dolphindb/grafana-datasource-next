@@ -1,5 +1,5 @@
 {
-  "name": "dolphindb-datasource-go",
+  "name": "dolphindb-datasource-next",
   "version": "3.0.1",
   "description": "Dolphin db grafana datasource",
   "scripts": {

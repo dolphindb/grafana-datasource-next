@@ -13,7 +13,7 @@
 
 ## [English](./README.md) | 中文
 
-DolphinDB 特别提供了 dolphindb-datasource-go 数据源插件。该插件使用 Go 语言编写，运行在 Grafana 后端，支持用户在 Grafana 面板上实现 DolphinDB 时序数据的可视化。
+DolphinDB 特别提供了 dolphindb-datasource-next 数据源插件。该插件使用 Go 语言编写，运行在 Grafana 后端，支持用户在 Grafana 面板上实现 DolphinDB 时序数据的可视化。
 
 注意：使用该插件需要 Grafana Server 和数据库部署在同一网络下，或 Grafana Server 可以连接到数据库。
 
@@ -26,7 +26,7 @@ DolphinDB 特别提供了 dolphindb-datasource-go 数据源插件。该插件使
 #### 2. 安装 dolphindb-datasource 插件
 在 [Github-grafana_datasource-Releases](https://github.com/dolphindb/grafana-datasource/releases) 中下载最新版本的插件压缩包，如 `dolphindb-datasource.v2.0.900.zip`
 
-将压缩包中的 dolphindb-datasource-go 文件夹解压到以下路径（如果不存在 plugins 目录，可手动创建）:
+将压缩包中的 dolphindb-datasource-next 文件夹解压到以下路径（如果不存在 plugins 目录，可手动创建）:
 
 - Windows: `<grafana 安装目录>\data\plugins\`
 - Linux: `/var/lib/grafana/plugins/`
@@ -35,7 +35,7 @@ DolphinDB 特别提供了 dolphindb-datasource-go 数据源插件。该插件使
 
 ```
 plugins
-├── dolphindb-datasource-go
+├── dolphindb-datasource-next
 │   ├── LICENSE
 │   ├── README.md
 │   ├── components
@@ -53,7 +53,7 @@ plugins
 #### 3. 修改 Grafana 配置文件，使其允许加载未签名的 dolphindb-datasource 插件
 推荐用户阅读 [Grafana 配置说明文档](https://grafana.com/docs/grafana/latest/administration/configuration/#configuration-file-location)，然后打开并编辑配置文件。
 
-在 `[plugins]` 部分下面取消注释 `allow_loading_unsigned_plugins`，并配置为 `dolphindb-datasource-go`，即把下面的
+在 `[plugins]` 部分下面取消注释 `allow_loading_unsigned_plugins`，并配置为 `dolphindb-datasource-next`，即把下面的
 ```ini
 # Enter a comma-separated list of plugin identifiers to identify plugins to load even if they are unsigned. Plugins with modified signatures are never loaded.
 ;allow_loading_unsigned_plugins =
@@ -61,7 +61,7 @@ plugins
 改为
 ```ini
 # Enter a comma-separated list of plugin identifiers to identify plugins to load even if they are unsigned. Plugins with modified signatures are never loaded.
-allow_loading_unsigned_plugins = dolphindb-datasource-go
+allow_loading_unsigned_plugins = dolphindb-datasource-next
 ```
 
 注：每次修改配置项后，需重启 Grafana
@@ -73,7 +73,7 @@ https://grafana.com/docs/grafana/latest/setup-grafana/start-restart-grafana/
 ### 验证已加载插件
 在 Grafana 启动日志中可以看到类似以下的日志  
 ```log
-WARN [05-19|12:05:48] Permitting unsigned plugin. This is not recommended logger=plugin.signature.validator pluginID=dolphindb-datasource-go pluginDir=<grafana 安装目录>/data/plugins/dolphindb-datasource-go
+WARN [05-19|12:05:48] Permitting unsigned plugin. This is not recommended logger=plugin.signature.validator pluginID=dolphindb-datasource-next pluginDir=<grafana 安装目录>/data/plugins/dolphindb-datasource-next
 ```
 
 日志文件路径：
@@ -156,5 +156,5 @@ npm run dev
 # 构建
 npm run build
 mage
-# 完成后产物在 dist 文件夹中。将 out 重命名为 dolphindb-datasource-go 后压缩为 .zip 即可
+# 完成后产物在 dist 文件夹中。将 out 重命名为 dolphindb-datasource-next 后压缩为 .zip 即可
 ```

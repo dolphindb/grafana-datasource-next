@@ -35,7 +35,7 @@ import { DdbCodeEditor } from './DdbCodeEditor'
 import { DataSource } from 'datasource'
 
 
-export const fpd_root = '/public/plugins/dolphindb-datasource-go' as const
+export const fpd_root = '/public/plugins/dolphindb-datasource-next' as const
 
 
 console.log(t('DolphinDB Grafana 插件已加载'))

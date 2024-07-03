@@ -14,7 +14,7 @@
 
 Grafana is an open-source data visualization web application that excels at dynamically displaying time-series data and supports multiple data sources. By configuring connected data sources and writing query scripts, users can display data charts in the browser.
 
-DolphinDB has developed the Grafana data source plugin (dolphindb-datasource-go), allowing users to interact with DolphinDB by writing query scripts and subscribing to streaming tables on the Grafana dashboard, achieving visualization of DolphinDB time-series data.
+DolphinDB has developed the Grafana data source plugin (dolphindb-datasource-next), allowing users to interact with DolphinDB by writing query scripts and subscribing to streaming tables on the Grafana dashboard, achieving visualization of DolphinDB time-series data.
 
 <img src='./img/en/demo.png' width='1200'>
 
@@ -26,7 +26,7 @@ Visit the Grafana official website: https://grafana.com/oss/grafana/ to download
 #### 2. Install the dolphindb-datasource plugin
 Download the latest version of the plugin package from [releases](https://github.com/dolphindb/grafana-datasource/releases), such as `dolphindb-datasource.v2.0.900.zip`.
 
-Extract the dolphindb-datasource-go folder from the package to the following paths (create the plugins directory manually if it doesn't exist):
+Extract the dolphindb-datasource-next folder from the package to the following paths (create the plugins directory manually if it doesn't exist):
 
 - Windows: `<grafana install directory>/data/plugins/`
 - Linux: `/var/lib/grafana/plugins/`
@@ -35,7 +35,7 @@ In the plugins directory, the file structure should look like this:
 
 ```
 plugins
-├── dolphindb-datasource-go
+├── dolphindb-datasource-next
 │   ├── LICENSE
 │   ├── README.md
 │   ├── components
@@ -54,7 +54,7 @@ plugins
 Read https://grafana.com/docs/grafana/latest/administration/configuration/#configuration-file-location  
 Open and edit the configuration file:
 
-Uncomment `allow_loading_unsigned_plugins` under the `[plugins]` section and set it to `dolphindb-datasource-go`, changing the following:
+Uncomment `allow_loading_unsigned_plugins` under the `[plugins]` section and set it to `dolphindb-datasource-next`, changing the following:
 ```ini
 # Enter a comma-separated list of plugin identifiers to identify plugins to load even if they are unsigned. Plugins with modified signatures are never loaded.
 ;allow_loading_unsigned_plugins =
@@ -62,7 +62,7 @@ Uncomment `allow_loading_unsigned_plugins` under the `[plugins]` section and set
 to:
 ```ini
 # Enter a comma-separated list of plugin identifiers to identify plugins to load even if they are unsigned. Plugins with modified signatures are never loaded.
-allow_loading_unsigned_plugins = dolphindb-datasource-go
+allow_loading_unsigned_plugins = dolphindb-datasource-next
 ```
 
 Note: Every time you change the configuration, you need to restart Grafana.
@@ -74,7 +74,7 @@ https://grafana.com/docs/grafana/latest/setup-grafana/start-restart-grafana/
 ### Verify Plugin Loading
 You should see logs similar to the following in the Grafana startup logs:
 ```log
-WARN [05-19|12:05:48] Permitting unsigned plugin. This is not recommended logger=plugin.signature.validator pluginID=dolphindb-datasource-go pluginDir=<grafana install directory>/data/plugins/dolphindb-datasource-go
+WARN [05-19|12:05:48] Permitting unsigned plugin. This is not recommended logger=plugin.signature.validator pluginID=dolphindb-datasource-next pluginDir=<grafana install directory>/data/plugins/dolphindb-datasource-next
 ```
 
 Log file paths:
@@ -155,5 +155,5 @@ npm run dev
 # Build
 npm run build
 mage
-# After completion, the artifacts are in the dist folder. Rename out to dolphindb-datasource-go and compress it into a .zip file.
+# After completion, the artifacts are in the dist folder. Rename out to dolphindb-datasource-next and compress it into a .zip file.
 ```

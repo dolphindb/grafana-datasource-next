@@ -2,7 +2,7 @@ import { DataSourceInstanceSettings, CoreApp, DataQueryResponse, MetricFindValue
 import { DataSourceWithBackend, getBackendSrv, getGrafanaLiveSrv, getTemplateSrv } from '@grafana/runtime';
 
 import { DdbDataQuery, DataSourceOptions, DEFAULT_QUERY, IQueryRespData } from './types';
-import { Observable, retry } from 'rxjs';
+import { Observable, merge, retry } from 'rxjs';
 
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -50,41 +50,13 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
       }
     });
     const streamingQueries = request.targets.filter(query => query.is_streaming);
-    const isHaveStreamingQuery = streamingQueries.length > 0
 
-    return new Observable<DataQueryResponse>(subscriber => {
       /**
        * 处理非流数据
        */
       const commonRequest = { ...request, targets: commonQueriesTargets };
       const result = super.query(commonRequest);
-      // 订阅 result 并将其数据传递给上层的 subscriber
-      result.subscribe({
-        next(data) {
-          data = { ...data, data: convertQueryRespTime(data.data) }
-          // 将数据传递给上层的 subscriber
-          subscriber.next(data);
-        },
-        error(err) {
-          // 传递错误给上层的 subscriber
-          subscriber.error(err);
-        },
-        complete() {
-          // 通知上层的 subscriber 数据流已完成
-          // 有流数据共存的情况，这里会怎样？
-          // 有流数据就不能 complete，在数据源只有 DDB 的时候问题不大，但是要是 Mixed 就不能同时存在任何流数据
-          // 这是 Grafana 设计的 bug，Mixed 必须要 subscriber.complete 才能完成查询，否则一直 pending
-          // 但是流数据又要求不能将 subscriber complete, 否则接受不了后面的数据
-          if (!isHaveStreamingQuery)
-            subscriber.complete();
-        }
-      });
 
-      const isHide = streamingQueries.map(e => e.hide ?? false);
-
-      /**
-       * 处理流数据
-       */
       const observables = streamingQueries.map((query) => {
         return getGrafanaLiveSrv().getDataStream({
           addr: {
@@ -98,35 +70,7 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
         });
       });
 
-      const subscribes = observables.map((ob, index) => {
-        return ob.subscribe({
-          next(data) {
-            data = { ...data, data: convertQueryRespTime(data.data) }
-            // 将数据传递给上层的 subscriber
-            if (!isHide[index])
-              subscriber.next(data);
-          },
-          error(err) {
-            // 传递错误给上层的 subscriber
-            subscriber.error(err);
-          },
-          complete() {
-            // 通知上层的 subscriber 数据流已完成
-            // 这里不能这么做，因为还有流式数据
-            // subscriber.complete();
-          }
-        })
-      })
-
-      return () => {
-        // 取消流数据的订阅
-        subscribes.forEach(sub => sub.unsubscribe())
-      }
-
-    })
-
-
-
+      return merge(result,...observables)
   }
 
   getDefaultQuery(_: CoreApp): Partial<DdbDataQuery> {
@@ -188,10 +132,10 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
 // 迁移过来的格式化函数，用于变量查询
 function var_formatter(value: string | string[], variable: any, default_formatter: Function) {
   if (typeof value === 'string')
-    return value
+    {return value}
 
   if (Array.isArray(variable))
-    return JSON.stringify(variable)
+    {return JSON.stringify(variable)}
 
   return default_formatter(value, 'json', variable)
 }
