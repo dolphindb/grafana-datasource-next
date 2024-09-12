@@ -1,8 +1,8 @@
-import { DataSourceInstanceSettings, CoreApp, DataQueryResponse, MetricFindValue, DataQueryRequest, LiveChannelScope } from '@grafana/data';
+import { DataSourceInstanceSettings, CoreApp, DataQueryResponse, MetricFindValue, DataQueryRequest, LiveChannelScope, LegacyMetricFindQueryOptions } from '@grafana/data';
 import { DataSourceWithBackend, getBackendSrv, getGrafanaLiveSrv, getTemplateSrv } from '@grafana/runtime';
 
 import { DdbDataQuery, DataSourceOptions, DEFAULT_QUERY, IQueryRespData } from './types';
-import { Observable, retry } from 'rxjs';
+import { Observable } from 'rxjs';
 
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
@@ -11,20 +11,22 @@ import timezone from 'dayjs/plugin/timezone';
 dayjs.extend(utc)
 dayjs.extend(timezone)
 
-export const nulls = [
-  -0x80,  // -128
-  -0x80_00,  // -32768
-  -0x80_00_00_00,  // -21_4748_3648
-  -0x80_00_00_00_00_00_00_00n,  // -922_3372_0368_5477_5808
-  -0x80_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00n,  // -170_1411_8346_0469_2317_3168_7303_7158_8410_5728
-  -9223372036854776000, // long
-  -3.4028234663852886e+38,
-  /** -Number.MAX_VALUE */
-  -Number.MAX_VALUE,
-  Uint8Array.from(
-    new Array(16).fill(0)
-  )
-]
+type GrafanaTimezone = 'browser' | 'utc' | string
+
+// export const nulls = [
+//   -0x80,  // -128
+//   -0x80_00,  // -32768
+//   -0x80_00_00_00,  // -21_4748_3648
+//   -0x80_00_00_00_00_00_00_00n,  // -922_3372_0368_5477_5808
+//   -0x80_00_00_00_00_00_00_00_00_00_00_00_00_00_00_00n,  // -170_1411_8346_0469_2317_3168_7303_7158_8410_5728
+//   -9223372036854776000, // long
+//   -3.4028234663852886e+38,
+//   /** -Number.MAX_VALUE */
+//   -Number.MAX_VALUE,
+//   Uint8Array.from(
+//     new Array(16).fill(0)
+//   )
+// ]
 
 export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOptions> {
   constructor(instanceSettings: DataSourceInstanceSettings<DataSourceOptions>) {
@@ -34,6 +36,7 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
 
   query(request: DataQueryRequest<DdbDataQuery>): Observable<DataQueryResponse> {
     const { range: { from, to }, scopedVars } = request
+    const { timezone } = request
 
     // 非流
     const commonQueriesTargets = request.targets.filter(query => !query.is_streaming).map(query => {
@@ -76,7 +79,7 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
       // 订阅 result 并将其数据传递给上层的 subscriber
       result.subscribe({
         next(data) {
-          data = { ...data, data: convertQueryRespTime(data.data) }
+          data = { ...data, data: convertQueryRespTime(data.data ,timezone) }
           // 将数据传递给上层的 subscriber
           subscriber.next(data);
         },
@@ -116,7 +119,7 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
       const subscribes = observables.map((ob, index) => {
         return ob.subscribe({
           next(data) {
-            data = { ...data, data: convertQueryRespTime(data.data) }
+            data = { ...data, data: convertQueryRespTime(data.data, timezone) }
             // 将数据传递给上层的 subscriber
             if (!isHide[index])
               subscriber.next(data);
@@ -148,7 +151,7 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
     return DEFAULT_QUERY;
   }
 
-  override async metricFindQuery(query: string, options: any): Promise<MetricFindValue[]> {
+  override async metricFindQuery(query: string, options: LegacyMetricFindQueryOptions): Promise<MetricFindValue[]> {
     console.log('metricFindQuery:', { query, options })
     const queryText = getTemplateSrv().replace(query, {}, var_formatter)
 
@@ -165,7 +168,7 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
           const metricFindValues = data.data as MetricFindValue[];
           const converted = metricFindValues.map(e => {
             if (isValidISO8601(e?.value ?? "")) {
-              const trueTime = timestampToUTC(dayjs(e.value ?? 0).valueOf());
+              const trueTime = timestampConvert(dayjs(e.value ?? 0).valueOf(), 'browser');
               const trueTimeObj = dayjs(trueTime);
               return {
                 text: trueTimeObj.format(),
@@ -211,22 +214,26 @@ function var_formatter(value: string | string[], variable: any, default_formatte
   return default_formatter(value, 'json', variable)
 }
 
-function convertQueryRespTime(data: IQueryRespData) {
+function convertQueryRespTime(data: IQueryRespData, targetTimezone: GrafanaTimezone) {
   return data.map(item => {
     return {
       ...item, fields: item.fields.map(field => {
         if (field.type === 'time') {
-          return { ...field, values: field.values.map((t: number) => timestampToUTC(t)) }
+          return { ...field, values: field.values.map((t: number) => timestampConvert(t, targetTimezone)) }
         } return field
       })
     }
   })
 }
 
-function timestampToUTC(timestamp: number) {
+function timestampConvert(timestamp: number, targetTimezone: GrafanaTimezone) {
+  let target = targetTimezone
+  if(targetTimezone === 'browser'){
+    target = dayjs.tz.guess()
+  }
   const time = dayjs(timestamp)
   const timeString = time.utc().format('YYYY-MM-DD HH:mm:ss:SSS')
-  const trueTime = dayjs(timeString).tz(dayjs.tz.guess(), true)
+  const trueTime = dayjs(timeString).tz(target, true)
   return trueTime.valueOf()
 }
 
