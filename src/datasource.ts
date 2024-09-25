@@ -233,8 +233,9 @@ function timestampConvert(timestamp: number, targetTimezone: GrafanaTimezone) {
   }
   const time = dayjs(timestamp)
   const timeString = time.utc().format('YYYY-MM-DD HH:mm:ss:SSS')
-  const trueTime = dayjs.tz(timeString, target)
-  return trueTime.valueOf()
+  const trueTime = dayjs.tz(timeString, target) // @ts-ignore
+  const trueTimestramp = trueTime.$d.getTime();
+  return trueTimestramp
 }
 
 function isValidISO8601(value: string | number): boolean {
