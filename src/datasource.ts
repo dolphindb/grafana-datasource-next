@@ -219,7 +219,7 @@ function convertQueryRespTime(data: IQueryRespData, targetTimezone: GrafanaTimez
     return {
       ...item, fields: item.fields.map(field => {
         if (field.type === 'time') {
-          return { ...field, values: field.values.map((t: number) => timestampConvert(t, targetTimezone)) }
+          return { ...field, values: field.values.map((t: number | null) => { return t?timestampConvert(t, targetTimezone): null }) }
         } return field
       })
     }

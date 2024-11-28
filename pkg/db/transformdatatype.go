@@ -51,6 +51,69 @@ var typeMap = map[model.DataTypeByte]reflect.Type{
 	model.DtVoid:       reflect.TypeOf(""),
 }
 
+func getNull(dt model.DataTypeByte) interface{} {
+	switch dt {
+	case model.DtVoid:
+		return byte(0)
+	case model.DtChar:
+		return model.NullChar
+	case model.DtCompress:
+		return model.NullCompress
+	case model.DtBool:
+		return model.NullBool
+	case model.DtBlob:
+		return model.NullBlob
+	case model.DtComplex:
+		return model.NullComplex
+	case model.DtPoint:
+		return model.NullPoint
+	case model.DtDate,
+		model.DtDateHour,
+		model.DtDatetime,
+		model.DtInt,
+		model.DtMinute,
+		model.DtMonth,
+		model.DtSecond,
+		model.DtTime,
+		model.DtNanoTime,
+		model.DtNanoTimestamp,
+		model.DtTimestamp:
+		return model.NullTime
+	case model.DtDouble:
+		return model.NullDouble
+	case model.DtFloat:
+		return model.NullFloat
+	case model.DtDuration:
+		return model.NullDuration
+	case model.DtLong:
+		return model.NullLong
+	case model.DtShort:
+		return model.NullShort
+	case model.DtUUID:
+		return model.NullUUID
+	case model.DtInt128:
+		return model.NullInt
+	case model.DtIP:
+		return model.NullIP
+	case model.DtDecimal32:
+		return model.NullDecimal32Value
+	case model.DtDecimal64:
+		return model.NullDecimal64Value
+	case model.DtDecimal128:
+		return model.NullDecimal128Value
+	case model.DtAny:
+		return model.NullAny
+	case model.DtString, model.DtCode, model.DtFunction, model.DtHandle:
+		return model.NullString
+	case model.DtSymbol:
+		return model.NullString
+	case 145:
+		return model.NullString
+	default:
+		return nil
+	}
+}
+
 func GetTypeFromMap(t model.DataTypeByte) reflect.Type {
 	targetType, ok := typeMap[t]
 	if !ok {
@@ -73,13 +136,17 @@ func ConvertValue(val interface{}, dataType model.DataTypeByte) (reflect.Value, 
 		val = string(val.([]byte))
 	}
 
+	nullVal := getNull(dataType)
+	if nullVal == val {
+		return reflect.Value{}, errors.New("a null value of this datatype")
+	}
 	// 通用转换逻辑，只进行数据转换，不额外操作
 	// 如果找不到指定的数据类型或者转换失败，则报错并返回一个空值
 	targetType, ok := typeMap[dataType]
 	if !ok {
 		log.DefaultLogger.Debug("Datatype need to support:")
 		log.DefaultLogger.Debug(spew.Sdump(val))
-		return reflect.ValueOf(nil), errors.New("unsupported data type")
+		return reflect.Value{}, errors.New("unsupported data type")
 	}
 
 	// 获取目标类型的指针类型
