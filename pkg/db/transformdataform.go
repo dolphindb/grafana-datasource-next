@@ -12,6 +12,12 @@ import (
 )
 
 func TransformDataForm(dataform model.DataForm, framename string) (*data.Frame, error) {
+
+	if dataform == nil {
+		frame := data.NewFrame(framename)
+		return frame, errors.New("get dataform error")
+	}
+		
 	// 获取 dataform 的类型
 	dataform_type := dataform.GetDataForm()
 
