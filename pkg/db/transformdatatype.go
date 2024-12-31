@@ -137,7 +137,6 @@ func ConvertValue(val interface{}, dataType model.DataTypeByte) (reflect.Value, 
 		val = string(val.([]byte))
 	}
 
-	log.DefaultLogger.Error(spew.Sdump(dataType))
 	nullVal := getNull(dataType)
 	if nullVal == val {
 		return reflect.Value{}, errors.New("a null value of this datatype")
