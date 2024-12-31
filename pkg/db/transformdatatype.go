@@ -55,6 +55,8 @@ func getNull(dt model.DataTypeByte) interface{} {
 	switch dt {
 	case model.DtVoid:
 		return byte(0)
+	case model.DtInt:
+		return model.NullInt
 	case model.DtChar:
 		return model.NullChar
 	case model.DtCompress:
@@ -70,7 +72,6 @@ func getNull(dt model.DataTypeByte) interface{} {
 	case model.DtDate,
 		model.DtDateHour,
 		model.DtDatetime,
-		model.DtInt,
 		model.DtMinute,
 		model.DtMonth,
 		model.DtSecond,
@@ -136,6 +137,7 @@ func ConvertValue(val interface{}, dataType model.DataTypeByte) (reflect.Value, 
 		val = string(val.([]byte))
 	}
 
+	log.DefaultLogger.Error(spew.Sdump(dataType))
 	nullVal := getNull(dataType)
 	if nullVal == val {
 		return reflect.Value{}, errors.New("a null value of this datatype")
