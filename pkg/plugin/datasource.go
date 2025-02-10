@@ -16,9 +16,9 @@ import (
 	"github.com/dolphin-db/dolphindb-datasource/pkg/models"
 
 	// "github.com/dolphin-db/dolphindb-datasource/pkg/websocket"
-	"github.com/dolphindb/api-go/api"
-	"github.com/dolphindb/api-go/model"
-	"github.com/dolphindb/api-go/streaming"
+	"github.com/dolphindb/api-go/v3/api"
+	"github.com/dolphindb/api-go/v3/model"
+	"github.com/dolphindb/api-go/v3/streaming"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"

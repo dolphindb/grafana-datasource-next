@@ -6,7 +6,7 @@ import (
 	"reflect"
 
 	// "github.com/davecgh/go-spew/spew"
-	"github.com/dolphindb/api-go/model"
+	"github.com/dolphindb/api-go/v3/model"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 )

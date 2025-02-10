@@ -2,7 +2,10 @@ module github.com/dolphin-db/dolphindb-datasource
 
 go 1.21
 
-require github.com/grafana/grafana-plugin-sdk-go v0.231.0
+require (
+	github.com/dolphindb/api-go/v3 v3.0.3-alpha.1
+	github.com/grafana/grafana-plugin-sdk-go v0.231.0
+)
 
 require (
 	github.com/BurntSushi/toml v1.3.2 // indirect
@@ -14,7 +17,6 @@ require (
 	github.com/chromedp/cdproto v0.0.0-20220208224320-6efb837e6bc2 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
 	github.com/davecgh/go-spew v1.1.1
-	github.com/dolphindb/api-go v1.30.23
 	github.com/elazarl/goproxy v0.0.0-20230731152917-f99041a5c027 // indirect
 	github.com/fatih/color v1.15.0 // indirect
 	github.com/getkin/kin-openapi v0.124.0 // indirect
@@ -60,7 +62,7 @@ require (
 	github.com/prometheus/common v0.53.0 // indirect
 	github.com/prometheus/procfs v0.14.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/satori/go.uuid v1.2.1-0.20181016170032-d91630c85102 // indirect
+	github.com/satori/go.uuid v1.1.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/unknwon/bra v0.0.0-20200517080246-1e3013ecaff8 // indirect
 	github.com/unknwon/com v1.0.1 // indirect
