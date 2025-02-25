@@ -208,10 +208,11 @@ function var_formatter(value: string | string[], variable: any, default_formatte
   if (typeof value === 'string')
     return value
 
-  if (Array.isArray(variable))
-    return JSON.stringify(variable)
+  if(Array.isArray(value)){
+    return JSON.stringify(value)
+  }
 
-  return default_formatter(value, 'json', variable)
+  return JSON.stringify(value)
 }
 
 function convertQueryRespTime(data: IQueryRespData, targetTimezone: GrafanaTimezone) {

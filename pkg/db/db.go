@@ -165,16 +165,23 @@ func RunPoolTasks(tasks []*api.Task, uuid string, config DBConfig) error {
 			return nil
 		} else {
 			log.DefaultLogger.Error(fmt.Sprintf("Error execute task, retring %d time", i+1))
-			// 删掉这个连接，重新来
+			// 只有在连接中断的时候，才删掉这个连接，重新来
 			if conn != nil {
-				err1 = conn.Close()
-				if err1 != nil {
-					log.DefaultLogger.Error("Error close pool connection")
+				tasks := make([]*api.Task, 1)
+				task := &api.Task{Script: "1+1"}
+				tasks[0] = task
+				conn.Execute(tasks)
+				taskErr := tasks[0].GetError()
+				if taskErr != nil {
+					err1 = conn.Close()
+					if err1 != nil {
+						log.DefaultLogger.Error("Error close pool connection")
+					}
+					dataSourceWithPoolMapLock.Lock()
+					delete(dataSourceWithPoolMap, uuid)
+					dataSourceWithPoolMapLock.Unlock()
 				}
 			}
-			dataSourceWithPoolMapLock.Lock()
-			delete(dataSourceWithPoolMap, uuid)
-			dataSourceWithPoolMapLock.Unlock()
 		}
 		err = err1
 	}
