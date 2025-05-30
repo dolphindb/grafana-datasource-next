@@ -3,9 +3,11 @@ module github.com/dolphin-db/dolphindb-datasource
 go 1.21
 
 require (
-	github.com/dolphindb/api-go/v3 v3.0.3-alpha.1
+	github.com/dolphindb/api-go/v3 v3.0.3-alpha.2
 	github.com/grafana/grafana-plugin-sdk-go v0.231.0
 )
+
+require golang.org/x/crypto v0.23.0 // indirect
 
 require (
 	github.com/BurntSushi/toml v1.3.2 // indirect
