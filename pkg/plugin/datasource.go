@@ -71,6 +71,10 @@ type Options struct {
 	URI string `json:"uri"`
 }
 
+func requestScopedUID(base string) string {
+	return fmt.Sprintf("%s:%d", base, time.Now().UnixNano())
+}
+
 // Dispose here tells plugin SDK that plugin wants to clean up resources when a new instance
 // created. As soon as datasource settings change detected by SDK old datasource instance will
 // be disposed and a new one will be created using NewSampleDatasource factory function.
@@ -109,6 +113,8 @@ func (d *Datasource) QueryData(ctx context.Context, req *backend.QueryDataReques
 	if err != nil {
 		return nil, err
 	}
+	requestUID := requestScopedUID(req.PluginContext.DataSourceInstanceSettings.UID)
+	defer db.CloseDatasource(requestUID)
 
 	// create a slice to hold all tasks
 	tasks := make([]*api.Task, len(req.Queries))
@@ -133,7 +139,7 @@ func (d *Datasource) QueryData(ctx context.Context, req *backend.QueryDataReques
 	}
 
 	// execute all tasks in parallel using the connection pool
-	err = db.RunPoolTasks(tasks, req.PluginContext.DataSourceInstanceSettings.UID, config)
+	err = db.RunPoolTasks(tasks, requestUID, config)
 	isRunPoolTaskError := false
 	runPoolTaskErrorStr := ""
 	if err != nil {
@@ -161,7 +167,7 @@ func (d *Datasource) QueryData(ctx context.Context, req *backend.QueryDataReques
 
 		if task.IsSuccess() {
 			data := task.GetResult()
-			frame, err := db.TransformDataForm(data, fmt.Sprintf("", q.RefID))
+			frame, err := db.TransformDataForm(data, q.RefID)
 			if err != nil {
 				res = backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("Error transforming dataform: %v", err.Error()))
 			} else {
@@ -286,18 +292,12 @@ func (d *Datasource) CheckHealth(_ context.Context, req *backend.CheckHealthRequ
 		res.Message = "Settings parse error"
 		return res, nil
 	}
-	conn, err := db.GetDatasourceSimpleConn(req.PluginContext.DataSourceInstanceSettings.UID, db.DBConfig(config.JSONData))
+	requestUID := requestScopedUID(req.PluginContext.DataSourceInstanceSettings.UID)
+	defer db.CloseDatasourceSimpleConn(requestUID)
+	_, err = db.RunSimpleScript("1", requestUID, db.DBConfig(config.JSONData))
 	if err != nil {
 		res.Status = backend.HealthStatusError
-		res.Message = fmt.Sprintf("Database connect error: %s", err.Error())
-		return res, nil
-	}
-
-	// 测试一下执行语句
-	_, err = conn.RunScript("1")
-	if err != nil {
-		res.Status = backend.HealthStatusError
-		res.Message = fmt.Sprintf("Database test error: %s", err.Error())
+		res.Message = fmt.Sprintf("Database connect/test error: %s", err.Error())
 		return res, nil
 	}
 
@@ -324,8 +324,10 @@ func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResource
 			log.DefaultLogger.Error("Error parse metric find query: %v", err)
 			return sendErrorResponse(sender, http.StatusBadRequest, err)
 		}
+		requestUID := requestScopedUID(req.PluginContext.DataSourceInstanceSettings.UID)
+		defer db.CloseDatasource(requestUID)
 		task := &api.Task{Script: queryModel.Query}
-		err = db.RunPoolTasks([]*api.Task{task}, req.PluginContext.DataSourceInstanceSettings.UID, config)
+		err = db.RunPoolTasks([]*api.Task{task}, requestUID, config)
 		if err != nil {
 			log.DefaultLogger.Error("Error run task: %v", err)
 			return sendErrorResponse(sender, http.StatusBadRequest, err)
@@ -462,7 +464,9 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 	randomNumberStr := strconv.Itoa(randomNumber)
 
 	// 先获取列名
-	df, err := db.RunSimpleScript(fmt.Sprintf("select top 1 * from %s", qm.Streaming.Table), req.PluginContext.DataSourceInstanceSettings.UID, config)
+	requestUID := requestScopedUID(req.PluginContext.DataSourceInstanceSettings.UID)
+	defer db.CloseDatasourceSimpleConn(requestUID)
+	df, err := db.RunSimpleScript(fmt.Sprintf("select top 1 * from %s", qm.Streaming.Table), requestUID, config)
 
 	if err != nil {
 		log.DefaultLogger.Error("Error get table structure")
@@ -471,6 +475,7 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 	tb := df.(*model.Table)
 
 	client := streaming.NewGoroutineClient("localhost", 8101)
+	defer client.Close()
 	// actionName, _ := uuid.NewUUID()
 	// size := 1
 	subscribeReq := &streaming.SubscribeRequest{
@@ -489,6 +494,7 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 	if err != nil {
 		log.DefaultLogger.Error("unable to subscribe streaming table")
 		log.DefaultLogger.Error(fmt.Sprintf("%v", err))
+		return err
 	}
 
 	log.DefaultLogger.Info("Subscribe to DB Streaming table complete.")
@@ -498,7 +504,9 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 		case <-ctx.Done():
 			// 取消流数据表订阅
 			log.DefaultLogger.Debug("Streaming terminated.")
-			client.UnSubscribe(subscribeReq)
+			if err := client.UnSubscribe(subscribeReq); err != nil {
+				log.DefaultLogger.Error("Failed unsubscribe streaming table", "error", err)
+			}
 			return ctx.Err()
 		case chanData := <-ddbChan:
 			// 收到流推送

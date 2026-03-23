@@ -82,6 +82,18 @@ func GetDatasource(uuid string, config DBConfig) (*api.DBConnectionPool, error) 
 	return pool, nil
 }
 
+func CloseDatasource(uuid string) error {
+	dataSourceWithPoolMapLock.Lock()
+	defer dataSourceWithPoolMapLock.Unlock()
+
+	ds, exists := dataSourceWithPoolMap[uuid]
+	if !exists {
+		return nil
+	}
+	delete(dataSourceWithPoolMap, uuid)
+	return ds.Conn.Close()
+}
+
 // 单独的 ddb 连接，轻量查询
 
 type DataSourceWithSimpleConn struct {
@@ -126,6 +138,18 @@ func GetDatasourceSimpleConn(uuid string, config DBConfig) (api.DolphinDB, error
 	}
 
 	return conn, nil
+}
+
+func CloseDatasourceSimpleConn(uuid string) error {
+	dataSourceWithSimpleConnMapLock.Lock()
+	defer dataSourceWithSimpleConnMapLock.Unlock()
+
+	ds, exists := dataSourceWithSimpleConnMap[uuid]
+	if !exists {
+		return nil
+	}
+	delete(dataSourceWithSimpleConnMap, uuid)
+	return ds.Conn.Close()
 }
 
 // Example of how to use getDatasource

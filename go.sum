@@ -23,8 +23,6 @@ github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ3
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/dolphindb/api-go/v3 v3.0.3-alpha.1 h1:NvFEPDa4gRWTkt3g1YwpaNrOqKnrI0HyuSzNlObPSWA=
-github.com/dolphindb/api-go/v3 v3.0.3-alpha.1/go.mod h1:23WcHuT9yLlE9fMhun29A2aXHUmer/ZA4tQ3PO7JQXM=
 github.com/dolphindb/api-go/v3 v3.0.3-alpha.2 h1:KJd4+N/74oq5/CIvejm/hRxpcIV/rqWQKUfnot4CRVs=
 github.com/dolphindb/api-go/v3 v3.0.3-alpha.2/go.mod h1:jL7852HNmUNqQq0Q3Ul9GCSz+DRm9XtHmWCcHHq2cgI=
 github.com/elazarl/goproxy v0.0.0-20230731152917-f99041a5c027 h1:1L0aalTpPz7YlMxETKpmQoWMBkeiuorElZIXoNmgiPE=
