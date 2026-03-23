@@ -34,6 +34,21 @@ var (
 	dataSourceWithPoolMapLock sync.RWMutex
 )
 
+const defaultPoolCapacity = "3"
+
+func parsePoolCapacity(value string) (int, error) {
+	if value == "" {
+		value = defaultPoolCapacity
+	}
+
+	capacity, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, fmt.Errorf("pool capacity convert to num error %v", err)
+	}
+
+	return capacity, nil
+}
+
 // getDatasource returns a connection for the given UUID and DBConfig.
 func GetDatasource(uuid string, config DBConfig) (*api.DBConnectionPool, error) {
 	dataSourceWithPoolMapLock.Lock()
@@ -55,9 +70,9 @@ func GetDatasource(uuid string, config DBConfig) (*api.DBConnectionPool, error) 
 	// Create a new connection
 	log.DefaultLogger.Info("Connecting to Connection Pool")
 
-	capacity, err := strconv.Atoi(config.PoolCapacity)
+	capacity, err := parsePoolCapacity(config.PoolCapacity)
 	if err != nil {
-		return nil, fmt.Errorf("pool capacity convert to num error %v", err)
+		return nil, err
 	}
 
 	poolOpt := &api.PoolOption{

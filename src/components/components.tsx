@@ -515,7 +515,7 @@ export function ConfigEditor({
     jsonData.password ??= '123456'
     jsonData.python ??= false
     jsonData.verbose ??= false
-    jsonData.poolCapacity ??= '10'
+    jsonData.poolCapacity ??= '3'
 
     function on_change(option: keyof DataSourceConfig, checked?: boolean) {
         return (event: React.FormEvent<HTMLInputElement>) => {
