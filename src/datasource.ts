@@ -1,5 +1,5 @@
 import { DataSourceInstanceSettings, CoreApp, DataQueryResponse, MetricFindValue, DataQueryRequest, LiveChannelScope, LegacyMetricFindQueryOptions } from '@grafana/data';
-import { DataSourceWithBackend, getBackendSrv, getGrafanaLiveSrv, getTemplateSrv, config } from '@grafana/runtime';
+import { DataSourceWithBackend, getBackendSrv, getGrafanaLiveSrv, getTemplateSrv } from '@grafana/runtime';
 
 import { DdbDataQuery, DataSourceOptions, DEFAULT_QUERY, IQueryRespData } from './types';
 import { Observable } from 'rxjs';
@@ -104,11 +104,11 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
        * 处理流数据
        */
       const observables = streamingQueries.map((query) => {
-        const majorVersion = parseInt(config.buildInfo.version.split('.')[0], 10);
-        // Grafana 12+ renamed LiveChannelAddress.namespace to .stream
+        // Grafana 12.4+ renamed LiveChannelAddress.namespace to .stream, pass both for compatibility
         const addr = {
           scope: LiveChannelScope.DataSource,
-          ...(majorVersion >= 12 ? { stream: this.uid } : { namespace: this.uid }),
+          namespace: this.uid,
+          stream: this.uid,
           path: `streaming-${query.refId}-${query.streaming?.table ?? ''}`,
           data: {
             ...query,
