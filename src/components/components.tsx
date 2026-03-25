@@ -29,7 +29,7 @@ import { defer, delay } from 'xshell/utils.browser.js'
 // } from 'dolphindb/browser.js'
 
 
-import { t } from './i18n/index.js'
+import { t } from './i18n'
 
 import { DdbCodeEditor } from './DdbCodeEditor'
 import { DataSource } from 'datasource'

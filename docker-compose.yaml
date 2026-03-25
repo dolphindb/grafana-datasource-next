@@ -8,7 +8,7 @@ services:
       context: ./.config
       args:
         grafana_image: ${GRAFANA_IMAGE:-grafana-enterprise}
-        grafana_version: ${GRAFANA_VERSION:-11.5.2}
+        grafana_version: ${GRAFANA_VERSION:-12.4.1}
         development: ${DEVELOPMENT:-false}
     ports:
       - 3000:3000/tcp
@@ -31,4 +31,4 @@ services:
       GF_LOG_FILTERS: plugin.dolphindb-dolphindb-datasource:debug
       GF_LOG_LEVEL: debug
       GF_DATAPROXY_LOGGING: 1
-      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: dolphindb-dolphindb-datasource
+      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: dolphindb-datasource-next

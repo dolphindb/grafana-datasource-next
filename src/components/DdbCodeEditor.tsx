@@ -41,7 +41,7 @@ import { theme_dark } from 'dolphindb/theme.dark.js'
 
 
 
-import { t, language } from './i18n/index.js'
+import { t, language } from './i18n'
 import { fpd_root, type DataSource, type DdbDataQuery } from './components'
 import React from 'react'
 
