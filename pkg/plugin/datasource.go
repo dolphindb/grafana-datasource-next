@@ -385,11 +385,6 @@ func sendErrorResponse(sender backend.CallResourceResponseSender, status int, er
 // SubscribeStream just returns an ok in this case, since we will always allow the user to successfully connect.
 // Permissions verifications could be done here. Check backend.StreamHandler docs for more details.
 func (d *Datasource) SubscribeStream(_ context.Context, req *backend.SubscribeStreamRequest) (*backend.SubscribeStreamResponse, error) {
-	log.DefaultLogger.Info("[Streaming] SubscribeStream called",
-		"path", req.Path,
-		"pluginContext.DataSourceInstanceSettings.UID", req.PluginContext.DataSourceInstanceSettings.UID,
-		"channelPrefix", d.channelPrefix,
-	)
 	return &backend.SubscribeStreamResponse{
 		Status: backend.SubscribeStreamStatusOK,
 	}, nil
@@ -397,8 +392,7 @@ func (d *Datasource) SubscribeStream(_ context.Context, req *backend.SubscribeSt
 
 // PublishStream just returns permission denied in this case, since in this example we don't want the user to send stream data.
 // Permissions verifications could be done here. Check backend.StreamHandler docs for more details.
-func (d *Datasource) PublishStream(_ context.Context, req *backend.PublishStreamRequest) (*backend.PublishStreamResponse, error) {
-	log.DefaultLogger.Info("[Streaming] PublishStream called", "path", req.Path)
+func (d *Datasource) PublishStream(context.Context, *backend.PublishStreamRequest) (*backend.PublishStreamResponse, error) {
 	return &backend.PublishStreamResponse{
 		Status: backend.PublishStreamStatusPermissionDenied,
 	}, nil
@@ -443,25 +437,15 @@ func (handler *ddbStreamingHandler) DoEvent(msg streaming.IMessage) {
 
 func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamRequest, sender *backend.StreamSender) error {
 
-	log.DefaultLogger.Info("[Streaming] RunStream called",
-		"path", req.Path,
-		"dataLen", len(req.Data),
-		"rawData", string(req.Data),
-	)
-
+	log.DefaultLogger.Debug("Run Stream Request")
 	// Unmarshal the JSON into our queryModel.
 	var qm queryModel
 
 	err := json.Unmarshal(req.Data, &qm)
 	if err != nil {
-		log.DefaultLogger.Error("[Streaming] JSON Parse Error", "error", err, "rawData", string(req.Data))
+		log.DefaultLogger.Error("Streaming request JSON Parse Error")
 		return fmt.Errorf("streaming request JSON parse error: %w", err)
 	}
-
-	log.DefaultLogger.Info("[Streaming] Parsed query model",
-		"refId", qm.RefID,
-		"streamingTable", qm.Streaming.Table,
-	)
 
 	// 接下来的是订阅流数据的代码
 	// 流数据订阅的 channel
@@ -469,14 +453,8 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 
 	config, err := parseJSONData(req.PluginContext.DataSourceInstanceSettings.JSONData)
 	if err != nil {
-		log.DefaultLogger.Error("[Streaming] Failed to parse datasource config", "error", err)
 		return err
 	}
-
-	log.DefaultLogger.Info("[Streaming] Datasource config",
-		"url", config.URL,
-		"username", config.Username,
-	)
 
 	rand.Seed(time.Now().UnixNano())
 
@@ -489,28 +467,19 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 	// 先获取列名
 	requestUID := requestScopedUID(req.PluginContext.DataSourceInstanceSettings.UID)
 	defer db.CloseDatasourceSimpleConn(requestUID)
-
-	log.DefaultLogger.Info("[Streaming] Querying table structure",
-		"table", qm.Streaming.Table,
-		"script", fmt.Sprintf("select top 1 * from %s", qm.Streaming.Table),
-	)
-
 	df, err := db.RunSimpleScript(fmt.Sprintf("select top 1 * from %s", qm.Streaming.Table), requestUID, config)
 
 	if err != nil {
-		log.DefaultLogger.Error("[Streaming] Error get table structure", "error", err, "table", qm.Streaming.Table)
+		log.DefaultLogger.Error("Error get table structure")
 		return err
 	}
 	tb := df.(*model.Table)
 
-	log.DefaultLogger.Info("[Streaming] Table structure obtained",
-		"colNames", fmt.Sprintf("%v", tb.ColNames),
-		"rowCount", tb.Rows(),
-	)
-
 	client := streaming.NewGoroutineClient("localhost", 8101)
 	defer client.Close()
 
+	// actionName, _ := uuid.NewUUID()
+	// size := 1
 	actionName := fmt.Sprintf("action%s", randomNumberStr)
 	subscribeReq := &streaming.SubscribeRequest{
 		Address:    config.URL,
@@ -521,51 +490,31 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 		Reconnect:  true,
 		UserID:     config.Username,
 		Password:   config.Password,
+		// BatchSize:  &size,
+		// MsgAsTable: true,
 	}
-
-	log.DefaultLogger.Info("[Streaming] Subscribing to streaming table",
-		"address", config.URL,
-		"table", qm.Streaming.Table,
-		"action", actionName,
-	)
-
 	err = client.Subscribe(subscribeReq)
 	if err != nil {
-		log.DefaultLogger.Error("[Streaming] Subscribe failed",
-			"error", err,
-			"address", config.URL,
-			"table", qm.Streaming.Table,
-			"action", actionName,
-		)
+		log.DefaultLogger.Error("unable to subscribe streaming table")
+		log.DefaultLogger.Error(fmt.Sprintf("%v", err))
 		return err
 	}
 
-	log.DefaultLogger.Info("[Streaming] Subscribe complete, waiting for data",
-		"table", qm.Streaming.Table,
-		"action", actionName,
-	)
+	log.DefaultLogger.Info("Subscribe to DB Streaming table complete.")
 
 	for {
 		select {
 		case <-ctx.Done():
-			log.DefaultLogger.Info("[Streaming] Context cancelled, unsubscribing",
-				"table", qm.Streaming.Table,
-				"action", actionName,
-			)
-			if err := client.UnSubscribe(subscribeReq); err != nil {
-				log.DefaultLogger.Error("[Streaming] Failed unsubscribe", "error", err, "table", qm.Streaming.Table)
-			}
+			// 取消流数据表订阅
+			log.DefaultLogger.Debug("Streaming terminated.")
+			client.UnSubscribe(subscribeReq)
 			return ctx.Err()
 		case chanData := <-ddbChan:
+			// 收到流推送
 			frame := data.NewFrame(
 				fmt.Sprintf("Stream %s", qm.RefID),
 			)
 			frame.Fields = append(frame.Fields, chanData...)
-
-			log.DefaultLogger.Debug("[Streaming] Sending frame",
-				"refId", qm.RefID,
-				"fieldCount", len(chanData),
-			)
 
 			err := sender.SendFrame(
 				frame,
@@ -573,7 +522,7 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 			)
 
 			if err != nil {
-				log.DefaultLogger.Error("[Streaming] Failed send frame", "error", err)
+				log.DefaultLogger.Error("Failed send frame", "error", err)
 			}
 		}
 	}

@@ -104,34 +104,34 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
        * 处理流数据
        */
       const observables = streamingQueries.map((query) => {
-        const channelPath = `streaming-${query.refId}-${query.streaming?.table ?? ''}`;
-        const addr = {
-          scope: LiveChannelScope.DataSource,
-          stream: this.uid,
-          path: channelPath,
-          data: {
-            ...query,
+        return getGrafanaLiveSrv().getDataStream({
+          addr: {
+            scope: LiveChannelScope.DataSource,
+            stream: this.uid,
+            path: `streaming-${query.refId}-${query.streaming?.table ?? ''}`,
+            data: {
+              ...query,
+            },
           },
-        };
-        console.log('[DDB Streaming] Channel address:', JSON.stringify(addr, null, 2));
-        console.log('[DDB Streaming] uid:', this.uid, 'path:', channelPath);
-        return getGrafanaLiveSrv().getDataStream({ addr });
+        });
       });
 
       const subscribes = observables.map((ob, index) => {
         return ob.subscribe({
           next(data) {
-            console.log('[DDB Streaming] Received data frame:', data);
             data = { ...data, data: convertQueryRespTime(data.data, timezone) }
+            // 将数据传递给上层的 subscriber
             if (!isHide[index])
               subscriber.next(data);
           },
           error(err) {
-            console.error('[DDB Streaming] Stream error:', err);
+            // 传递错误给上层的 subscriber
             subscriber.error(err);
           },
           complete() {
-            console.log('[DDB Streaming] Stream completed');
+            // 通知上层的 subscriber 数据流已完成
+            // 这里不能这么做，因为还有流式数据
+            // subscriber.complete();
           }
         })
       })
