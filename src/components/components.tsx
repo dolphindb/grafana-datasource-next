@@ -29,7 +29,7 @@ import { defer, delay } from 'xshell/utils.browser.js'
 // } from 'dolphindb/browser.js'
 
 
-import { t } from './i18n/index.js'
+import { t } from './i18n'
 
 import { DdbCodeEditor } from './DdbCodeEditor'
 import { DataSource } from 'datasource'
@@ -515,7 +515,7 @@ export function ConfigEditor({
     jsonData.password ??= '123456'
     jsonData.python ??= false
     jsonData.verbose ??= false
-    jsonData.poolCapacity ??= '10'
+    jsonData.poolCapacity ??= '3'
 
     function on_change(option: keyof DataSourceConfig, checked?: boolean) {
         return (event: React.FormEvent<HTMLInputElement>) => {

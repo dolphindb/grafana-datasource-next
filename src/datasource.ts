@@ -104,16 +104,17 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
        * 处理流数据
        */
       const observables = streamingQueries.map((query) => {
-        return getGrafanaLiveSrv().getDataStream({
-          addr: {
-            scope: LiveChannelScope.DataSource,
-            namespace: this.uid,
-            path: `ws/streaming-${query.refId}-${query.streaming?.table ?? ''}`,
-            data: {
-              ...query,
-            },
+        // Grafana 12.4+ renamed LiveChannelAddress.namespace to .stream, pass both for compatibility
+        const addr = {
+          scope: LiveChannelScope.DataSource,
+          namespace: this.uid,
+          stream: this.uid,
+          path: `streaming-${query.refId}-${query.streaming?.table ?? ''}`,
+          data: {
+            ...query,
           },
-        });
+        } as any;
+        return getGrafanaLiveSrv().getDataStream({ addr });
       });
 
       const subscribes = observables.map((ob, index) => {

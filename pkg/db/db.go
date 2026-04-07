@@ -34,6 +34,21 @@ var (
 	dataSourceWithPoolMapLock sync.RWMutex
 )
 
+const defaultPoolCapacity = "3"
+
+func parsePoolCapacity(value string) (int, error) {
+	if value == "" {
+		value = defaultPoolCapacity
+	}
+
+	capacity, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, fmt.Errorf("pool capacity convert to num error %v", err)
+	}
+
+	return capacity, nil
+}
+
 // getDatasource returns a connection for the given UUID and DBConfig.
 func GetDatasource(uuid string, config DBConfig) (*api.DBConnectionPool, error) {
 	dataSourceWithPoolMapLock.Lock()
@@ -55,9 +70,9 @@ func GetDatasource(uuid string, config DBConfig) (*api.DBConnectionPool, error) 
 	// Create a new connection
 	log.DefaultLogger.Info("Connecting to Connection Pool")
 
-	capacity, err := strconv.Atoi(config.PoolCapacity)
+	capacity, err := parsePoolCapacity(config.PoolCapacity)
 	if err != nil {
-		return nil, fmt.Errorf("pool capacity convert to num error %v", err)
+		return nil, err
 	}
 
 	poolOpt := &api.PoolOption{
@@ -80,6 +95,18 @@ func GetDatasource(uuid string, config DBConfig) (*api.DBConnectionPool, error) 
 	}
 
 	return pool, nil
+}
+
+func CloseDatasource(uuid string) error {
+	dataSourceWithPoolMapLock.Lock()
+	defer dataSourceWithPoolMapLock.Unlock()
+
+	ds, exists := dataSourceWithPoolMap[uuid]
+	if !exists {
+		return nil
+	}
+	delete(dataSourceWithPoolMap, uuid)
+	return ds.Conn.Close()
 }
 
 // 单独的 ddb 连接，轻量查询
@@ -126,6 +153,18 @@ func GetDatasourceSimpleConn(uuid string, config DBConfig) (api.DolphinDB, error
 	}
 
 	return conn, nil
+}
+
+func CloseDatasourceSimpleConn(uuid string) error {
+	dataSourceWithSimpleConnMapLock.Lock()
+	defer dataSourceWithSimpleConnMapLock.Unlock()
+
+	ds, exists := dataSourceWithSimpleConnMap[uuid]
+	if !exists {
+		return nil
+	}
+	delete(dataSourceWithSimpleConnMap, uuid)
+	return ds.Conn.Close()
 }
 
 // Example of how to use getDatasource
