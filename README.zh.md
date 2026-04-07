@@ -153,8 +153,18 @@ npm i
 # 开发
 npm run dev
 
-# 构建
+# 构建前端
 npm run build
-mage
-# 完成后产物在 dist 文件夹中。将 out 重命名为 dolphindb-datasource-next 后压缩为 .zip 即可
+
+# 编译后端（根据目标平台选择对应命令）
+mage -v build:linux        # Linux amd64
+mage -v build:windows      # Windows amd64
+mage -v build:linuxArm64   # Linux arm64
+
+# 打包
+# 构建完成后产物在 dist/ 文件夹中。
+# 将 dist 重命名为 dolphindb-datasource-next，然后压缩为 zip。
+# 压缩包内需包含一层 dolphindb-datasource-next 目录。
+mv dist dolphindb-datasource-next
+zip -r dolphindb-datasource-next.zip dolphindb-datasource-next
 ```

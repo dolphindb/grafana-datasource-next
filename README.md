@@ -152,8 +152,18 @@ npm i
 # Development
 npm run dev
 
-# Build
+# Build frontend
 npm run build
-mage
-# After completion, the artifacts are in the dist folder. Rename out to dolphindb-datasource-next and compress it into a .zip file.
+
+# Build backend (choose the target platform)
+mage -v build:linux        # Linux amd64
+mage -v build:windows      # Windows amd64
+mage -v build:linuxArm64   # Linux arm64
+
+# Package
+# After the build completes, all artifacts are in the dist/ folder.
+# Rename dist to dolphindb-datasource-next, then create a zip archive.
+# The archive must contain a top-level dolphindb-datasource-next directory.
+mv dist dolphindb-datasource-next
+zip -r dolphindb-datasource-next.zip dolphindb-datasource-next
 ```
