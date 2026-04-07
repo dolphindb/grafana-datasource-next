@@ -31,7 +31,7 @@ const config = async (env): Promise<Configuration> => {
 
     context: path.join(process.cwd(), SOURCE_DIR),
 
-    devtool: env.production ? 'source-map' : 'eval-source-map',
+    devtool: env.production ? false : 'eval-source-map',
 
     entry: await getEntries(),
 
