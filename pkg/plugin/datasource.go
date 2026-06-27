@@ -161,7 +161,7 @@ func (d *Datasource) QueryData(ctx context.Context, req *backend.QueryDataReques
 
 		if task.IsSuccess() {
 			data := task.GetResult()
-			frame, err := db.TransformDataForm(data, fmt.Sprintf("", q.RefID))
+			frame, err := db.TransformDataForm(data, q.RefID)
 			if err != nil {
 				res = backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("Error transforming dataform: %v", err.Error()))
 			} else {
