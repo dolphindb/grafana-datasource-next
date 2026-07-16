@@ -2,6 +2,7 @@ import { DataSourceInstanceSettings, CoreApp, DataQueryResponse, MetricFindValue
 import { DataSourceWithBackend, getBackendSrv, getGrafanaLiveSrv, getTemplateSrv } from '@grafana/runtime';
 
 import { DdbDataQuery, DataSourceOptions, DEFAULT_QUERY, IQueryRespData } from './types';
+import { isQueryConfigured } from './queryUtils';
 import { Observable } from 'rxjs';
 
 import dayjs from 'dayjs';
@@ -198,9 +199,7 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
   // }
 
   filterQuery(query: DdbDataQuery): boolean {
-    // if no query has been provided, prevent the query from being executed
-    // return !!query.queryText;
-    return true;
+    return isQueryConfigured(query);
   }
 }
 
