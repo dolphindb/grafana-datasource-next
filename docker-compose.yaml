@@ -2,13 +2,16 @@ services:
   grafana:
     user: root
     container_name: 'dolphindb-dolphindb-datasource'
+    image: dolphindb-dolphindb-datasource-grafana:${GRAFANA_VERSION:-13.1.0}
+    pull_policy: build
 
     platform: 'linux/amd64'
     build:
       context: ./.config
+      pull: true
       args:
         grafana_image: ${GRAFANA_IMAGE:-grafana-enterprise}
-        grafana_version: ${GRAFANA_VERSION:-12.4.1}
+        grafana_version: ${GRAFANA_VERSION:-13.1.0}
         development: ${DEVELOPMENT:-false}
     ports:
       - 3000:3000/tcp

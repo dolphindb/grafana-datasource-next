@@ -9,7 +9,6 @@ import { request_json } from 'xshell/net.browser.js'
 
 import {
     type QueryEditorProps,
-    type DataSourceJsonData,
 } from '@grafana/data'
 import {
     CodeEditor,
@@ -27,9 +26,9 @@ import {
     Registry,
     parseRawGrammar,
     type IGrammar,
+    type IRawGrammar,
     type StateStack,
 } from 'vscode-textmate'
-import type { IRawGrammar } from 'vscode-textmate/release/rawGrammar.js'
 
 import { createOnigScanner, createOnigString, loadWASM } from 'vscode-oniguruma'
 
@@ -42,13 +41,15 @@ import { theme_dark } from 'dolphindb/theme.dark.js'
 
 
 import { t, language } from './i18n'
-import { fpd_root, type DataSource, type DdbDataQuery } from './components'
+import { DataSource } from '../datasource'
+import { type DataSourceOptions, type DdbDataQuery } from '../types'
+import { fpd_root } from './components'
 import React from 'react'
 
 
 const constants_lower = constants.map(constant => constant.toLowerCase())
 
-let docs = { }
+let docs: Record<string, RstDocument> = { }
 
 let funcs: string[] = [ ]
 let funcs_lower: string[] = [ ]
@@ -66,7 +67,7 @@ export function DdbCodeEditor (
         onChange,
         onRunQuery,
         tip = true,
-    }: QueryEditorProps<DataSource, DdbDataQuery, DataSourceJsonData> & { height?: number, tip?: boolean }
+    }: QueryEditorProps<DataSource, DdbDataQuery, DataSourceOptions> & { height?: number, tip?: boolean }
 ) {
     const { isDark } = useTheme2()
     
@@ -187,7 +188,7 @@ export function DdbCodeEditor (
                         
                         (monaco as any).inited = true
                         
-                        let { languages, editor } = monaco
+                        const { languages } = monaco
                         
                         const { CompletionItemKind } = languages
                         
@@ -285,7 +286,7 @@ export function DdbCodeEditor (
                                 if (canceller.isCancellationRequested)
                                     return
                                 
-                                const keyword = doc.getWordAtPosition(pos).word
+                                const keyword = doc.getWordAtPosition(pos)?.word ?? ''
                                 
                                 
                                 let fns: string[]
@@ -435,7 +436,7 @@ export function DdbCodeEditor (
                         
                     editor.setValue(queryText || '')
                     
-                    editor.getModel().onDidChangeContent(event => {
+                    editor.getModel()?.onDidChangeContent(() => {
                         onChange({
                             refId,
                             is_streaming,
@@ -456,7 +457,7 @@ export function DdbCodeEditor (
                         
                         // @ts-ignore
                         async run (editor: monacoapi.editor.IStandaloneCodeEditor) {
-                            await editor.getAction('editor.action.copyLinesDownAction').run()
+                            await editor.getAction('editor.action.copyLinesDownAction')?.run()
                         }
                     })
                     
@@ -471,7 +472,7 @@ export function DdbCodeEditor (
                         
                         // @ts-ignore
                         async run (editor: monacoapi.editor.IStandaloneCodeEditor) {
-                            await editor.getAction('editor.action.deleteLines').run()
+                            await editor.getAction('editor.action.deleteLines')?.run()
                         }
                     })
                     
@@ -876,7 +877,7 @@ function find_active_param_index (
             stack.push(char)
             continue
         } else if (char in token_map)  // 括号匹配，出栈，括号不匹配，返回null
-            if (stack[stack.length - 1] === token_map[char]) {
+            if (stack[stack.length - 1] === token_map[char as keyof typeof token_map]) {
                 stack.pop()
                 continue
             } else // 括号不匹配，返回-1
@@ -915,4 +916,3 @@ function get_signature_and_params (func_name: string): {
     const params = matched[1].split(',').map(s => s.trim())
     return { signature, params }
 }
-

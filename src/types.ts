@@ -10,6 +10,11 @@ export interface DdbDataQuery extends DataQuery {
   }
 }
 
+// Kept for the scaffolded editor components that still use the old names.
+export interface MyQuery extends DdbDataQuery {
+  constant?: number
+}
+
 export const DEFAULT_QUERY: Partial<DdbDataQuery> = {
   is_streaming: false
 };
@@ -27,6 +32,7 @@ export interface DataSourceResponse {
  * These are options configured for each DataSource instance
  */
 export interface DataSourceOptions extends DataSourceJsonData {
+  path?: string
   url?: string
   autologin?: boolean
   username?: string
@@ -35,6 +41,8 @@ export interface DataSourceOptions extends DataSourceJsonData {
   verbose?: boolean
   poolCapacity?: string
 }
+
+export type MyDataSourceOptions = DataSourceOptions
 
 /**
  * Value that is used in the backend, but never sent over HTTP to the frontend

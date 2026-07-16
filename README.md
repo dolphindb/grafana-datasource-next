@@ -155,15 +155,28 @@ npm run dev
 # Build frontend
 npm run build
 
-# Build backend (choose the target platform)
-mage -v build:linux        # Linux amd64
-mage -v build:windows      # Windows amd64
-mage -v build:linuxArm64   # Linux arm64
+# Validate the Docker Compose configuration without starting Grafana
+npm run server:config
 
-# Package
-# After the build completes, all artifacts are in the dist/ folder.
-# Rename dist to dolphindb-datasource-next, then create a zip archive.
-# The archive must contain a top-level dolphindb-datasource-next directory.
-mv dist dolphindb-datasource-next
-zip -r dolphindb-datasource-next.zip dolphindb-datasource-next
+# Pull the configured Grafana base image and rebuild the local image
+npm run server:build
+
+# Start Grafana 13.1.0 in the foreground
+npm run server
+
+# Alternatively, start it in the background and follow its logs
+npm run server:up:detached
+npm run server:logs
+
+# Stop and remove the local Grafana container when validation is complete
+npm run server:down
+
+# Override the image or Grafana version when needed
+GRAFANA_IMAGE=grafana GRAFANA_VERSION=13.1.0 npm run server
+
+# Build the frontend and the three supported backends, then create one ZIP per platform
+npm run package:release
+
+# Packages are written to artifacts/. Each ZIP contains the common plugin files
+# and only the backend executable for its target platform.
 ```

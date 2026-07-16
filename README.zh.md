@@ -156,15 +156,28 @@ npm run dev
 # 构建前端
 npm run build
 
-# 编译后端（根据目标平台选择对应命令）
-mage -v build:linux        # Linux amd64
-mage -v build:windows      # Windows amd64
-mage -v build:linuxArm64   # Linux arm64
+# 只检查 Docker Compose 配置，不启动 Grafana
+npm run server:config
 
-# 打包
-# 构建完成后产物在 dist/ 文件夹中。
-# 将 dist 重命名为 dolphindb-datasource-next，然后压缩为 zip。
-# 压缩包内需包含一层 dolphindb-datasource-next 目录。
-mv dist dolphindb-datasource-next
-zip -r dolphindb-datasource-next.zip dolphindb-datasource-next
+# 拉取指定的 Grafana 基础镜像并重新构建本地镜像
+npm run server:build
+
+# 在前台启动 Grafana 13.1.0
+npm run server
+
+# 也可以在后台启动，并持续查看日志
+npm run server:up:detached
+npm run server:logs
+
+# 本地验证结束后，停止并删除 Grafana 容器
+npm run server:down
+
+# 如需指定镜像或 Grafana 版本，可通过环境变量覆盖
+GRAFANA_IMAGE=grafana GRAFANA_VERSION=13.1.0 npm run server
+
+# 构建前端和三个目标平台的后端，并为每个平台分别生成 ZIP
+npm run package:release
+
+# 压缩文件输出到 artifacts/。每个 ZIP 包含插件公共文件，
+# 并且只包含对应目标平台的后端可执行文件。
 ```

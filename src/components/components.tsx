@@ -2,24 +2,18 @@ import './index.sass'
 
 import { default as React, useRef, useState, useEffect } from 'react'
 
-import { Observable, merge } from 'rxjs'
-
-
-import { getTemplateSrv } from '@grafana/runtime'
-import type { DataQuery } from '@grafana/schema'
 import {
-    DataSourcePlugin, DataSourceApi, MutableDataFrame, FieldType, LoadingState, CircularDataFrame,
-    SelectableValue, type DataQueryRequest, type DataSourcePluginOptionsEditorProps,
-    type DataSourceInstanceSettings, type DataQueryResponse, type QueryEditorProps,
-    type DataSourceJsonData, type MetricFindValue, type FieldDTO
+    SelectableValue,
+    type DataSourcePluginOptionsEditorProps,
+    type QueryEditorProps,
 } from '@grafana/data'
-import { InlineField, Input, InlineSwitch, Button, Icon, Select } from '@grafana/ui'
-import { DataSourceOptions } from '../types'
+import { InlineField, Input, Button, Icon, Select } from '@grafana/ui'
+import { type DdbDataQuery, type DataSourceOptions } from '../types'
 
 type DataSourceConfig = DataSourceOptions;
 
 
-import { defer, delay } from 'xshell/utils.browser.js'
+import { delay } from 'xshell/utils.browser.js'
 
 
 // import {
@@ -493,16 +487,6 @@ console.log(t('DolphinDB Grafana 插件已加载'))
 //     verbose?: boolean
 // }
 
-export interface DdbDataQuery extends DataQuery {
-    is_streaming: boolean
-    queryText?: string
-    streaming?: {
-        table: string
-        action?: string
-    }
-}
-
-
 export function ConfigEditor({
     options,
     onOptionsChange
@@ -621,37 +605,34 @@ export function ConfigEditor({
     </div>
 }
 
-
 export function QueryEditor(
     {
         query,
         onChange,
         onRunQuery,
         datasource
-    }: QueryEditorProps<DataSource, DdbDataQuery, DataSourceJsonData> & { height?: number }
+    }: QueryEditorProps<DataSource, DdbDataQuery, DataSourceOptions> & { height?: number }
 ) {
-    const script_type = { label: t('脚本'), value: 'script' as const }
-    const streaming_type = { label: t('流数据表'), value: 'streaming' as const }
+    type QueryType = 'script' | 'streaming'
 
-    const [type, set_type] = useState<SelectableValue<'script' | 'streaming'>>(script_type)
+    const script_type: SelectableValue<QueryType> = { label: t('脚本'), value: 'script' }
+    const streaming_type: SelectableValue<QueryType> = { label: t('流数据表'), value: 'streaming' }
+    const query_types: Array<SelectableValue<QueryType>> = [script_type, streaming_type]
+
+    const [type, set_type] = useState<SelectableValue<QueryType>>(script_type)
 
     useEffect(() => {
         set_type(query.is_streaming ? streaming_type : script_type)
     }, [])
 
-    const {
-        is_streaming,
-        queryText,
-        refId,
-        streaming
-    } = query
+    const { streaming } = query
 
     return <div className='query-edtior-nav'>
         <div className='query-editor-nav-bar'>
             <InlineField tooltip={t('选择查询类型')} label={t('类型')} labelWidth={12}>
                 <Select
                     placeholder='query'
-                    options={[script_type, streaming_type]}
+                    options={query_types}
                     value={type}
                     width={20}
                     isMulti={false}
@@ -773,21 +754,3 @@ function VariableEditorBottom({
             }>{t('暂存查询并更新预览')}</Button>
     </div>
 }
-
-
-function var_formatter(value: string | string[], variable: any, default_formatter: Function) {
-    if (typeof value === 'string')
-        return value
-
-    if (Array.isArray(variable))
-        return JSON.stringify(variable)
-
-    return default_formatter(value, 'json', variable)
-}
-
-
-// ------------ 注册插件
-export const plugin = new DataSourcePlugin(DataSource)
-    .setConfigEditor(ConfigEditor)
-    .setQueryEditor(QueryEditor)
-    .setVariableQueryEditor(VariableEditor)
