@@ -1,5 +1,5 @@
 import { DataSourceInstanceSettings, CoreApp, DataQueryResponse, MetricFindValue, DataQueryRequest, LiveChannelScope, LegacyMetricFindQueryOptions } from '@grafana/data';
-import { DataSourceWithBackend, getBackendSrv, getGrafanaLiveSrv, getTemplateSrv } from '@grafana/runtime';
+import { DataSourceWithBackend, getGrafanaLiveSrv, getTemplateSrv } from '@grafana/runtime';
 
 import { DdbDataQuery, DataSourceOptions, DEFAULT_QUERY, IQueryRespData } from './types';
 import { isQueryConfigured } from './queryUtils';
@@ -94,8 +94,9 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
           // 有流数据就不能 complete，在数据源只有 DDB 的时候问题不大，但是要是 Mixed 就不能同时存在任何流数据
           // 这是 Grafana 设计的 bug，Mixed 必须要 subscriber.complete 才能完成查询，否则一直 pending
           // 但是流数据又要求不能将 subscriber complete, 否则接受不了后面的数据
-          if (!isHaveStreamingQuery)
+          if (!isHaveStreamingQuery) {
             subscriber.complete();
+          }
         }
       });
 
@@ -123,8 +124,9 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
           next(data) {
             data = { ...data, data: convertQueryRespTime(data.data, timezone) }
             // 将数据传递给上层的 subscriber
-            if (!isHide[index])
+            if (!isHide[index]) {
               subscriber.next(data);
+            }
           },
           error(err) {
             // 传递错误给上层的 subscriber
@@ -154,41 +156,38 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
   }
 
   override async metricFindQuery(query: string, options: LegacyMetricFindQueryOptions): Promise<MetricFindValue[]> {
-    console.log('metricFindQuery:', { query, options })
     const queryText = getTemplateSrv().replace(query, {}, var_formatter)
 
-    return new Promise((res, rej) => {
-      const respObservalbe = getBackendSrv().fetch({
-        url: `/api/datasources/${this.id}/resources/metricFindQuery`,
-        method: 'POST', data: {
-          query: queryText
+    try {
+      // Let Grafana select the supported resource route using the datasource UID.
+      const values = await this.postResource<MetricFindValue[]>('metricFindQuery', { query: queryText });
+      return values.map(e => {
+        if (isValidISO8601(e?.value ?? "")) {
+          const trueTime = timestampConvert(dayjs(e.value ?? 0).valueOf(), 'browser');
+          const trueTimeObj = dayjs(trueTime);
+          return {
+            text: trueTimeObj.format(),
+            value: trueTimeObj.toISOString()
+          }
         }
-      })
-
-      respObservalbe.subscribe({
-        next(data) {
-          const metricFindValues = data.data as MetricFindValue[];
-          const converted = metricFindValues.map(e => {
-            if (isValidISO8601(e?.value ?? "")) {
-              const trueTime = timestampConvert(dayjs(e.value ?? 0).valueOf(), 'browser');
-              const trueTimeObj = dayjs(trueTime);
-              return {
-                text: trueTimeObj.format(),
-                value: trueTimeObj.toISOString()
-              }
-            }
-            return e;
-          })
-          console.log(converted)
-          res(converted)
-        },
-        error(err) {
-          console.log("MFQ Error", err)
-          // 传递错误给上层的 subscriber
-          rej(err)
-        },
-      })
-    })
+        return e;
+      });
+    } catch (error) {
+      // Fetch errors are plain objects; variable previews need an Error with a message.
+      if (error instanceof Error) {
+        throw error;
+      }
+      const response = error as { data?: { error?: unknown; message?: unknown } | string; message?: unknown; statusText?: unknown } | null;
+      const messages = [
+        typeof response?.data === 'string' ? response.data : response?.data?.error,
+        typeof response?.data === 'object' ? response.data?.message : undefined,
+        response?.message,
+        response?.statusText,
+        error,
+      ];
+      const message = messages.find(value => typeof value === 'string' && value.trim().length > 0);
+      throw new Error(typeof message === 'string' ? message : 'Variable query failed');
+    }
   }
 
   // applyTemplateVariables(query: MyQuery, scopedVars: ScopedVars): Record<string, any> {
@@ -205,8 +204,9 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
 
 // 迁移过来的格式化函数，用于变量查询
 function var_formatter(value: string | string[], variable: any, default_formatter: Function) {
-  if (typeof value === 'string')
+  if (typeof value === 'string') {
     return value
+  }
 
   if(Array.isArray(value)){
     return JSON.stringify(value)
