@@ -43,6 +43,9 @@ mage -v build:windows
 echo "Building Linux ARM64 backend..."
 mage -v build:linuxARM64
 
+echo "Updating backend build manifest..."
+mage -v build:generateManifestFile
+
 declare -a TARGETS=(
   "linux-amd64:${EXECUTABLE_BASE}_linux_amd64"
   "windows-amd64:${EXECUTABLE_BASE}_windows_amd64.exe"
@@ -71,6 +74,11 @@ for target in "${TARGETS[@]}"; do
   # of them from the staged package, then restore only this platform's binary.
   find "${package_dir}" -maxdepth 1 -type f -name "${EXECUTABLE_BASE}_*" -delete
   cp -p "${source_executable}" "${package_dir}/${executable}"
+
+  # Store explicit Unix modes in the ZIP, independent of source file permissions.
+  find "${package_dir}" -type d -exec chmod 755 {} +
+  find "${package_dir}" -type f -exec chmod 644 {} +
+  chmod 755 "${package_dir}/${executable}"
 
   rm -f "${archive}"
   (

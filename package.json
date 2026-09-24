@@ -1,6 +1,6 @@
 {
   "name": "dolphindb-datasource-next",
-  "version": "3.0.6",
+  "version": "3.0.7",
   "description": "Dolphin db grafana datasource",
   "scripts": {
     "build": "webpack -c ./webpack.config.ts --env production",
