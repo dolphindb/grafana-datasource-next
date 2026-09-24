@@ -71,7 +71,7 @@ export function DdbCodeEditor (
 ) {
     const { isDark } = useTheme2()
     
-    const rpinit = useRef<Promise<void>>()
+    const rpinit = useRef<Promise<void> | undefined>(undefined)
     
     
     return <div className='query-editor'>

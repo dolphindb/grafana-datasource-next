@@ -162,8 +162,14 @@ npm run server:config
 # 拉取指定的 Grafana 基础镜像并重新构建本地镜像
 npm run server:build
 
-# 在前台启动 Grafana 13.1.0
+# 在前台启动 Grafana 13.2.2
 npm run server
+
+# 或直接通过 Docker Compose 启动
+docker compose up --build -d
+
+# 检查运行中的 Grafana 版本（应为 13.2.2）
+curl --fail http://localhost:3000/api/health
 
 # 也可以在后台启动，并持续查看日志
 npm run server:up:detached
@@ -172,8 +178,8 @@ npm run server:logs
 # 本地验证结束后，停止并删除 Grafana 容器
 npm run server:down
 
-# 如需指定镜像或 Grafana 版本，可通过环境变量覆盖
-GRAFANA_IMAGE=grafana GRAFANA_VERSION=13.1.0 npm run server
+# 可切换为 OSS 镜像（Docker Compose 中的 Grafana 版本固定为 13.2.2）
+GRAFANA_IMAGE=grafana npm run server
 
 # 构建前端和三个目标平台的后端，并为每个平台分别生成 ZIP
 npm run package:release

@@ -161,8 +161,14 @@ npm run server:config
 # Pull the configured Grafana base image and rebuild the local image
 npm run server:build
 
-# Start Grafana 13.1.0 in the foreground
+# Start Grafana 13.2.2 in the foreground
 npm run server
+
+# Or start directly with Docker Compose
+docker compose up --build -d
+
+# Verify the running Grafana version (expected: 13.2.2)
+curl --fail http://localhost:3000/api/health
 
 # Alternatively, start it in the background and follow its logs
 npm run server:up:detached
@@ -171,8 +177,8 @@ npm run server:logs
 # Stop and remove the local Grafana container when validation is complete
 npm run server:down
 
-# Override the image or Grafana version when needed
-GRAFANA_IMAGE=grafana GRAFANA_VERSION=13.1.0 npm run server
+# Use the OSS image (the Grafana version is pinned to 13.2.2 in Docker Compose)
+GRAFANA_IMAGE=grafana npm run server
 
 # Build the frontend and the three supported backends, then create one ZIP per platform
 npm run package:release

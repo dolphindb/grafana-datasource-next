@@ -2,7 +2,8 @@ services:
   grafana:
     user: root
     container_name: 'dolphindb-dolphindb-datasource'
-    image: dolphindb-dolphindb-datasource-grafana:${GRAFANA_VERSION:-13.1.0}
+    # Keep the local image tag and base version pinned together; ignore GRAFANA_VERSION.
+    image: dolphindb-dolphindb-datasource-grafana:13.2.2
     pull_policy: build
 
     platform: 'linux/amd64'
@@ -11,7 +12,7 @@ services:
       pull: true
       args:
         grafana_image: ${GRAFANA_IMAGE:-grafana-enterprise}
-        grafana_version: ${GRAFANA_VERSION:-13.1.0}
+        grafana_version: '13.2.2'
         development: ${DEVELOPMENT:-false}
     ports:
       - 3000:3000/tcp
