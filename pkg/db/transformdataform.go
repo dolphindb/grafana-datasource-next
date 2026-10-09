@@ -17,7 +17,7 @@ func TransformDataForm(dataform model.DataForm, framename string) (*data.Frame, 
 		frame := data.NewFrame(framename)
 		return frame, errors.New("get dataform error")
 	}
-		
+
 	// 获取 dataform 的类型
 	dataform_type := dataform.GetDataForm()
 
@@ -82,6 +82,17 @@ func TransformDataFormToValues(df model.DataForm) ([]map[string]interface{}, err
 			vt = df.(*model.Set).Vector
 		} else {
 			vt = df.(*model.Vector)
+		}
+		// SELECT without FROM returns an ANY vector containing one vector per column.
+		if dataform_type == model.DfVector && vt.GetDataType() == model.DtAny {
+			if vt.Rows() != 1 {
+				return []map[string]interface{}{}, errors.New("variable query result must contain exactly one column")
+			}
+			column, ok := vt.Get(0).Value().(*model.Vector)
+			if !ok || column == nil {
+				return []map[string]interface{}{}, errors.New("unable to transform dataform to values")
+			}
+			vt = column
 		}
 		slice, err := TransformVector(vt)
 		if err != nil {
