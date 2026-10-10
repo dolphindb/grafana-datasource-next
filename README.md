@@ -106,7 +106,7 @@ Open or create a new Dashboard, edit or create a new Panel, and select the data 
 The dolphindb-datasource plugin supports variables such as:
 - `$__timeFilter` variable: The value is the time range on the panel's timeline. For example, if the current timeline range is `2022-02-15 00:00:00 - 2022.02.17 00:00:00`, the `$__timeFilter` in the code will be replaced with `pair(2022.02.15 00:00:00.000, 2022.02.17 00:00:00.000)`.
 - `$__interval` and `$__interval_ms` variables: The values are the time grouping intervals automatically calculated by Grafana based on the timeline range and screen pixels. `$__interval` will be replaced by the corresponding DURATION type in DolphinDB; `$__interval_ms` will be replaced by milliseconds (integer).
-- Query variables: Generate dynamic values or option lists through SQL queries.
+- Query variables: Generate dynamic values or option lists through SQL queries. `$__timeFilter` (also `$timeFilter`) is supported using the dashboard time range. Set Refresh to `On time range change` to update variable options when the time range changes.
 
 For more variables, please refer to https://grafana.com/docs/grafana/latest/variables/
 

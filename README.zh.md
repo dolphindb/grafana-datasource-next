@@ -106,7 +106,7 @@ http://localhost:3000/plugins
 dolphindb-datasource 插件支持变量，比如:
 - `$__timeFilter` 变量: 值为面板上方的时间轴区间，比如当前的时间轴区间是 `2022-02-15 00:00:00 - 2022.02.17 00:00:00` ，那么代码中的 `$__timeFilter` 会被替换为 `pair(2022.02.15 00:00:00.000, 2022.02.17 00:00:00.000)`
 - `$__interval` 和 `$__interval_ms` 变量: 值为 Grafana 根据时间轴区间长度和屏幕像素点自动计算的时间分组间隔。`$__interval` 会被替换为 DolphinDB 中对应的 DURATION 类型; `$__interval_ms` 会被替换为毫秒数 (整型)
-- query 变量: 通过 SQL 查询生成动态值或选项列表
+- query 变量: 通过 SQL 查询生成动态值或选项列表，支持使用 `$__timeFilter`（也支持 `$timeFilter`）引用 Dashboard 的时间范围。将 Refresh 设为 `On time range change`，可在时间范围变化时更新变量选项。
 
 更多变量请查看 https://grafana.com/docs/grafana/latest/variables/
 

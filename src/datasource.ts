@@ -1,4 +1,4 @@
-import { DataSourceInstanceSettings, CoreApp, DataQueryResponse, MetricFindValue, DataQueryRequest, LiveChannelScope, LegacyMetricFindQueryOptions } from '@grafana/data';
+import { DataSourceInstanceSettings, CoreApp, DataQueryResponse, MetricFindValue, DataQueryRequest, LiveChannelScope, LegacyMetricFindQueryOptions, TimeRange, dateTime } from '@grafana/data';
 import { DataSourceWithBackend, getGrafanaLiveSrv, getTemplateSrv } from '@grafana/runtime';
 
 import { DdbDataQuery, DataSourceOptions, DEFAULT_QUERY, IQueryRespData } from './types';
@@ -36,27 +36,17 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
   }
 
   query(request: DataQueryRequest<DdbDataQuery>): Observable<DataQueryResponse> {
-    const { range: { from, to }, scopedVars } = request
+    const { range, scopedVars } = request
     const { timezone } = request
 
     // 非流
     const commonQueriesTargets = request.targets.filter(query => !query.is_streaming).map(query => {
       const code = query.queryText ?? '';
       const tplsrv = getTemplateSrv();
-      (from as any)._isUTC = false;
-      (to as any)._isUTC = false;
       const code_ = tplsrv
         .replace(
-          code //@ts-ignore
+          replaceTimeFilter(code, range) //@ts-ignore
             .replaceAll(
-              /\$(__)?timeFilter\b/g,
-              () =>
-                'pair(' +
-                from.format('YYYY.MM.DD HH:mm:ss.SSS') +
-                ', ' +
-                to.format('YYYY.MM.DD HH:mm:ss.SSS') +
-                ')'
-            ).replaceAll(
               /\$__interval\b/g,
               () =>
                 tplsrv.replace('$__interval', scopedVars).replace(/h$/, 'H')
@@ -155,8 +145,8 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
     return DEFAULT_QUERY;
   }
 
-  override async metricFindQuery(query: string, options: LegacyMetricFindQueryOptions): Promise<MetricFindValue[]> {
-    const queryText = getTemplateSrv().replace(query, {}, var_formatter)
+  override async metricFindQuery(query: string, options: LegacyMetricFindQueryOptions = {}): Promise<MetricFindValue[]> {
+    const queryText = getTemplateSrv().replace(replaceTimeFilter(query, options.range), options.scopedVars ?? {}, var_formatter)
 
     try {
       // Let Grafana select the supported resource route using the datasource UID.
@@ -200,6 +190,21 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
   filterQuery(query: DdbDataQuery): boolean {
     return isQueryConfigured(query);
   }
+}
+
+function replaceTimeFilter(query: string, range?: TimeRange): string {
+  if (!range) {
+    return query;
+  }
+
+  // Preserve panel time formatting on copies so Grafana's shared range is not mutated.
+  const from = dateTime(range.from);
+  const to = dateTime(range.to);
+  (from as any)._isUTC = false;
+  (to as any)._isUTC = false;
+  return query.replace(/\$(__)?timeFilter\b/g, () =>
+    `pair(${from.format('YYYY.MM.DD HH:mm:ss.SSS')}, ${to.format('YYYY.MM.DD HH:mm:ss.SSS')})`
+  );
 }
 
 // 迁移过来的格式化函数，用于变量查询
