@@ -1,4 +1,4 @@
-import { DataQueryRequest, DataSourceInstanceSettings, toUtc, TimeRange } from '@grafana/data';
+import { DataQueryRequest, DataSourceInstanceSettings, ScopedVars, toUtc, TimeRange } from '@grafana/data';
 import { DataSourceWithBackend, getBackendSrv, setBackendSrv, setTemplateSrv } from '@grafana/runtime';
 import { firstValueFrom, of, throwError } from 'rxjs';
 
@@ -11,11 +11,12 @@ jest.mock('@grafana/ui', () => ({ attachDebugger: jest.fn(), createLogger: () =>
 
 describe('metricFindQuery', () => {
   const fetch = jest.fn();
-  const replace = jest.fn((query: string) => query);
+  const replace = jest.fn((query: string, _scopedVars?: ScopedVars, _format?: string | Function) => query);
   let datasource: DataSource;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    replace.mockReset().mockImplementation(query => query);
     setBackendSrv({ fetch } as unknown as ReturnType<typeof getBackendSrv>);
     setTemplateSrv({ replace } as unknown as Parameters<typeof setTemplateSrv>[0]);
     datasource = new DataSource({
@@ -44,6 +45,65 @@ describe('metricFindQuery', () => {
     fetch.mockReturnValue(of({ data: [] }));
     await expect(datasource.metricFindQuery('table($values as a)', {})).resolves.toEqual([]);
     expect(fetch).toHaveBeenCalledWith(expect.objectContaining({ data: { query: 'table(1..3 as a)' } }));
+  });
+
+  it.each([
+    ['2026-01-27T16:23:46Z', '2026.01.27T16:23:46'],
+    ['2026-01-27T16:23:46.504Z', '2026.01.27T16:23:46.504'],
+    ['2026-01-27T16:23:46.5Z', '2026.01.27T16:23:46.500'],
+    ['2026-01-27T16:23:46.05Z', '2026.01.27T16:23:46.050'],
+    ['2026-01-27T16:23:46.000Z', '2026.01.27T16:23:46.000'],
+    ['2026-01-27T16:23:46.504123Z', '2026.01.27T16:23:46.504123000'],
+    ['2026-01-27T16:23:46.504123456Z', '2026.01.27T16:23:46.504123456'],
+  ])('returns %s as a DolphinDB literal without changing the clock time or precision', async (value, literal) => {
+    fetch.mockReturnValue(of({ data: [{ text: value, value }] }));
+
+    await expect(datasource.metricFindQuery('select distinct addTime from loadTable("dfs://webNotice", "data")'))
+      .resolves.toEqual([{ text: literal, value: literal }]);
+  });
+
+  it('leaves ordinary string variable options unchanged', async () => {
+    const values = ['AAPL', '2026-01-27', 'prefix2026-01-27T16:23:46.504Z'].map(value => ({ text: value, value }));
+    fetch.mockReturnValue(of({ data: values }));
+
+    await expect(datasource.metricFindQuery('symbols')).resolves.toEqual(values);
+  });
+
+  it.each<[string | string[] | number, string]>([
+    ['2026-01-27T16:23:46.504Z', '2026.01.27T16:23:46.504'],
+    ['2026.01.27T16:23:46.504', '2026.01.27T16:23:46.504'],
+    [['2026-01-27T16:23:46.5Z', '2026-01-28T00:00:00Z'], '[2026.01.27T16:23:46.500,2026.01.28T00:00:00.000]'],
+    [['2026.01.27T16:23:46.504', '2026.01.28T00:00:00.000'], '[2026.01.27T16:23:46.504,2026.01.28T00:00:00.000]'],
+    [['2026-01-27T16:23:46.504123456Z'], '[2026.01.27T16:23:46.504123456]'],
+    [['2026.01.27T16:23:46.504', '2026.01.27T16:23:46.504123456', '2026.01.28T00:00:00'], '[2026.01.27T16:23:46.504000000,2026.01.27T16:23:46.504123456,2026.01.28T00:00:00.000000000]'],
+    ['AAPL', 'AAPL'],
+    [['AAPL', 'a"b', 'c\\d'], '["AAPL","a\\"b","c\\\\d"]'],
+    [42, '42'],
+    [[], '[]'],
+  ])('interpolates %p consistently in panel and variable queries', async (value, literal) => {
+    const scopedVars: ScopedVars = { query0: { text: String(value), value } };
+    replace.mockImplementation((query, vars, format) => query.replace(/\$query0\b/g, () =>
+      typeof format === 'function' ? format(vars?.query0?.value) : '$query0'
+    ));
+    const operator = Array.isArray(value) ? 'in' : '=';
+    const queryText = `select addTime from loadTable("dfs://webNotice", "data") where addTime ${operator} $query0`;
+    const expected = queryText.replace('$query0', literal);
+    const panelQuery = jest.spyOn(DataSourceWithBackend.prototype, 'query').mockReturnValue(of({ data: [] }));
+    fetch.mockReturnValue(of({ data: [] }));
+
+    try {
+      await firstValueFrom(datasource.query({
+        range: timeRange('2026-01-27T00:00:00Z', '2026-01-28T00:00:00Z'),
+        scopedVars, timezone: 'Asia/Shanghai', targets: [{ refId: 'A', queryText, is_streaming: false }],
+      } as DataQueryRequest<DdbDataQuery>));
+      await datasource.metricFindQuery(queryText, { scopedVars });
+
+      const panelRequest = panelQuery.mock.calls[0][0] as DataQueryRequest<DdbDataQuery>;
+      expect(panelRequest.targets[0].queryText).toBe(expected);
+      expect(fetch).toHaveBeenCalledWith(expect.objectContaining({ data: { query: expected } }));
+    } finally {
+      panelQuery.mockRestore();
+    }
   });
 
   function timeRange(from: string, to: string): TimeRange {

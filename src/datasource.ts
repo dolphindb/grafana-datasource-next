@@ -152,13 +152,9 @@ export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOp
       // Let Grafana select the supported resource route using the datasource UID.
       const values = await this.postResource<MetricFindValue[]>('metricFindQuery', { query: queryText });
       return values.map(e => {
-        if (isValidISO8601(e?.value ?? "")) {
-          const trueTime = timestampConvert(dayjs(e.value ?? 0).valueOf(), 'browser');
-          const trueTimeObj = dayjs(trueTime);
-          return {
-            text: trueTimeObj.format(),
-            value: trueTimeObj.toISOString()
-          }
+        const literal = typeof e.value === 'string' ? toDolphinDBTimeLiteral(e.value) : undefined;
+        if (literal !== undefined) {
+          return { ...e, text: literal, value: literal };
         }
         return e;
       });
@@ -210,11 +206,22 @@ function replaceTimeFilter(query: string, range?: TimeRange): string {
 // 迁移过来的格式化函数，用于变量查询
 function var_formatter(value: string | string[], variable: any, default_formatter: Function) {
   if (typeof value === 'string') {
-    return value
+    // Also normalize ISO values saved in existing dashboard variable selections.
+    return toDolphinDBTimeLiteral(value) ?? value;
   }
 
-  if(Array.isArray(value)){
-    return JSON.stringify(value)
+  if (Array.isArray(value)) {
+    const literals = value.map(item => typeof item === 'string' ? toDolphinDBTimeLiteral(item) : undefined);
+    // Go's time JSON omits trailing zeros, even for values from the same column.
+    // DolphinDB vectors require every temporal element to have the same type.
+    const precision = literals.reduce((max, literal) => Math.max(max, literal?.match(/\.(\d+)$/)?.[1].length ?? 0), 0);
+    return `[${value.map((item, index) => {
+      const literal = literals[index];
+      return literal === undefined ? JSON.stringify(item) : literal.replace(
+        /(\d{2}:\d{2}:\d{2})(?:\.(\d+))?$/,
+        (_, time, fraction = '') => precision ? `${time}.${fraction.padEnd(precision, '0')}` : time
+      );
+    }).join(',')}]`;
   }
 
   return JSON.stringify(value)
@@ -244,7 +251,16 @@ function timestampConvert(timestamp: number, targetTimezone: GrafanaTimezone) {
   return trueTimestramp
 }
 
-function isValidISO8601(value: string | number): boolean {
-  const regex = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})Z$/;
-  return regex.test(value.toString());
+function toDolphinDBTimeLiteral(value: string): string | undefined {
+  const iso = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2}:\d{2})(?:\.(\d{1,9}))?Z$/.exec(value);
+  if (iso) {
+    // DolphinDB has no timezone in temporal literals. Preserve the database's
+    // clock time and precision; Date/dayjs would shift it or truncate nanoseconds.
+    const [, year, month, day, time, fraction] = iso;
+    const subsecond = fraction ? `.${fraction.padEnd(fraction.length <= 3 ? 3 : 9, '0')}` : '';
+    return `${year}.${month}.${day}T${time}${subsecond}`;
+  }
+
+  // Values returned by metricFindQuery must stay unquoted in multi-value vectors.
+  return /^\d{4}\.\d{2}\.\d{2}T\d{2}:\d{2}:\d{2}(?:\.(?:\d{3}|\d{9}))?$/.test(value) ? value : undefined;
 }
