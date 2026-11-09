@@ -4,13 +4,10 @@ import { default as React, useRef, useState, useEffect } from 'react'
 
 import {
     SelectableValue,
-    type DataSourcePluginOptionsEditorProps,
     type QueryEditorProps,
 } from '@grafana/data'
 import { InlineField, Input, Button, Icon, Select } from '@grafana/ui'
 import { type DdbDataQuery, type DataSourceOptions } from '../types'
-
-type DataSourceConfig = DataSourceOptions;
 
 
 import { delay } from 'xshell/utils.browser.js'
@@ -477,133 +474,7 @@ console.log(t('DolphinDB Grafana 插件已加载'))
 // }
 
 
-/** DDB constructor 所需参数 */
-// interface DataSourceConfig extends DataSourceJsonData {
-//     url?: string
-//     autologin?: boolean
-//     username?: string
-//     password?: string
-//     python?: boolean
-//     verbose?: boolean
-// }
-
-export function ConfigEditor({
-    options,
-    onOptionsChange
-}: DataSourcePluginOptionsEditorProps<DataSourceConfig>) {
-    let { jsonData } = options
-
-    jsonData.url ??= '127.0.0.1:8848'
-    jsonData.autologin ??= true
-    jsonData.username ??= 'admin'
-    jsonData.password ??= '123456'
-    jsonData.python ??= false
-    jsonData.verbose ??= false
-    jsonData.poolCapacity ??= '3'
-
-    function on_change(option: keyof DataSourceConfig, checked?: boolean) {
-        return (event: React.FormEvent<HTMLInputElement>) => {
-            onOptionsChange({
-                ...options,
-                jsonData: {
-                    ...options.jsonData,
-                    [option]: checked ? event.currentTarget.checked : event.currentTarget.value
-                }
-            })
-        }
-    }
-
-
-    return <div className='gf-form-group'>
-        <InlineField
-            tooltip={t('数据库连接地址, 如: 127.0.0.1:8848')}
-            label='URL'
-            labelWidth={12}
-        >
-            <Input
-                value={options.jsonData.url}
-                onChange={on_change('url', false)}
-            />
-        </InlineField>
-        <br />
-
-        {/* Go API 不支持不自动登录
-        <InlineField tooltip={t('是否在建立连接后自动登录，默认 true')} label={t('自动登录')} labelWidth={12}>
-            <InlineSwitch
-                value={options.jsonData.autologin}
-                onChange={on_change('autologin', true)}
-            />
-        </InlineField>
-        <br />
-        */}
-
-        {
-            // (options.jsonData.autologin || options.jsonData.autologin === undefined) && 
-            <>
-                <InlineField tooltip={t('DolphinDB 登录用户名')} label={t('用户名')} labelWidth={12}>
-                    <Input
-                        value={options.jsonData.username}
-                        onChange={on_change('username', false)}
-                    />
-                </InlineField>
-                <br />
-            </>
-        }
-
-        {
-            // (options.jsonData.autologin || options.jsonData.autologin === undefined) && 
-            <>
-                <InlineField tooltip={t('DolphinDB 登录密码')} label={t('密码')} labelWidth={12}>
-                    <Input
-                        type='password'
-                        value={options.jsonData.password}
-                        onChange={on_change('password', false)}
-                    />
-                </InlineField>
-                <br />
-            </>
-        }
-
-        <InlineField
-            tooltip={t('该数据源绑定的连接池开启连接的数量')}
-            label={t('连接池容量')}
-        // labelWidth={12}
-        >
-            <Input
-                value={options.jsonData.poolCapacity}
-                onChange={on_change('poolCapacity', false)}
-            />
-        </InlineField>
-        <br />
-
-        {/*
-        Go API 暂时不支持 Python Parser Session，先不做
-
-        <InlineField tooltip={t('(需要 v2.10.0 以上的 DolphinDB Server) 使用 Python Parser 来解释执行脚本, 默认 false')} label='Python' labelWidth={12}>
-            <InlineSwitch
-                value={options.jsonData.python}
-                onChange={on_change('python', true)}
-            />
-        </InlineField>
-        <br />
-        */}
-
-        {/* 这个 Go API 也没有
-        <InlineField tooltip={t('打印调试信息, 默认 false')} label={t('调试信息')} labelWidth={12}>
-            <InlineSwitch
-                value={options.jsonData.verbose}
-                onChange={on_change('verbose', true)}
-            />
-        </InlineField>
-        */}
-
-        {/*<div className='version'>({t('插件构建时间:')} {''})</div>*/}
-
-        {/* <div className='options'>
-            { JSON.stringify(options) }
-        </div> */}
-    </div>
-}
+export { ConfigEditor } from './ConfigEditor'
 
 export function QueryEditor(
     {

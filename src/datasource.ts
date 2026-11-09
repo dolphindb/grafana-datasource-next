@@ -31,7 +31,6 @@ type GrafanaTimezone = 'browser' | 'utc' | string
 
 export class DataSource extends DataSourceWithBackend<DdbDataQuery, DataSourceOptions> {
   constructor(instanceSettings: DataSourceInstanceSettings<DataSourceOptions>) {
-    console.log(instanceSettings)
     super(instanceSettings);
   }
 

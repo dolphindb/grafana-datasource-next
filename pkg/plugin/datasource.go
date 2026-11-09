@@ -109,7 +109,7 @@ func (d *Datasource) QueryData(ctx context.Context, req *backend.QueryDataReques
 	var mu sync.Mutex // mutex to protect concurrent access to response
 
 	// parse datasource settings once
-	config, err := parseJSONData(req.PluginContext.DataSourceInstanceSettings.JSONData)
+	config, err := parseDatasourceSettings(*req.PluginContext.DataSourceInstanceSettings)
 	if err != nil {
 		return nil, err
 	}
@@ -199,10 +199,12 @@ type queryModel struct {
 	} `json:"streaming,omitempty"`
 }
 
-func parseJSONData(jsonData json.RawMessage) (db.DBConfig, error) {
-	var config db.DBConfig
-	err := json.Unmarshal(jsonData, &config)
-	return config, err
+func parseDatasourceSettings(source backend.DataSourceInstanceSettings) (db.DBConfig, error) {
+	settings, err := models.LoadPluginSettings(source)
+	if err != nil {
+		return db.DBConfig{}, err
+	}
+	return db.DBConfig(settings.JSONData), nil
 }
 
 type metricFindQueryModel struct {
@@ -286,7 +288,7 @@ func parseMetricFindQueryJSONData(jsonData json.RawMessage) (metricFindQueryMode
 // a datasource is working as expected.
 func (d *Datasource) CheckHealth(_ context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
 	res := &backend.CheckHealthResult{}
-	config, err := models.LoadPluginSettings(*req.PluginContext.DataSourceInstanceSettings)
+	config, err := parseDatasourceSettings(*req.PluginContext.DataSourceInstanceSettings)
 	if err != nil {
 		res.Status = backend.HealthStatusError
 		res.Message = "Settings parse error"
@@ -294,7 +296,7 @@ func (d *Datasource) CheckHealth(_ context.Context, req *backend.CheckHealthRequ
 	}
 	requestUID := requestScopedUID(req.PluginContext.DataSourceInstanceSettings.UID)
 	defer db.CloseDatasourceSimpleConn(requestUID)
-	_, err = db.RunSimpleScript("1", requestUID, db.DBConfig(config.JSONData))
+	_, err = db.RunSimpleScript("1", requestUID, config)
 	if err != nil {
 		res.Status = backend.HealthStatusError
 		res.Message = fmt.Sprintf("Database connect/test error: %s", err.Error())
@@ -312,7 +314,7 @@ func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResource
 		// 这里处理 metricFindQuery 的逻辑
 
 		// Plugin Config
-		config, err := parseJSONData(req.PluginContext.DataSourceInstanceSettings.JSONData)
+		config, err := parseDatasourceSettings(*req.PluginContext.DataSourceInstanceSettings)
 		if err != nil {
 			log.DefaultLogger.Error("Error parsing JSONData: %v", err)
 			return sendErrorResponse(sender, http.StatusBadRequest, err)
@@ -451,7 +453,7 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 	// 流数据订阅的 channel
 	ddbChan := make(chan []*data.Field)
 
-	config, err := parseJSONData(req.PluginContext.DataSourceInstanceSettings.JSONData)
+	config, err := parseDatasourceSettings(*req.PluginContext.DataSourceInstanceSettings)
 	if err != nil {
 		return err
 	}

@@ -9,6 +9,8 @@ datasources:
     version: 1
     editable: true
     jsonData:
-      path: '/resources'
+      url: '127.0.0.1:8848'
+      username: 'admin'
+      poolCapacity: '3'
     secureJsonData:
-      apiKey: 'api-key'
+      password: $DOLPHINDB_PASSWORD

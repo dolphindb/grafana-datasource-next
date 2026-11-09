@@ -36,6 +36,7 @@ export interface DataSourceOptions extends DataSourceJsonData {
   url?: string
   autologin?: boolean
   username?: string
+  /** @deprecated Read only for migration; save passwords in secureJsonData.password. */
   password?: string
   python?: boolean
   verbose?: boolean
@@ -47,9 +48,11 @@ export type MyDataSourceOptions = DataSourceOptions
 /**
  * Value that is used in the backend, but never sent over HTTP to the frontend
  */
-export interface MySecureJsonData {
-  apiKey?: string;
+export interface DataSourceSecureJsonData {
+  password?: string;
 }
+
+export type MySecureJsonData = DataSourceSecureJsonData
 
 interface IQueryDataField {
   config: {}

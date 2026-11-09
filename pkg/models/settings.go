@@ -31,5 +31,11 @@ func LoadPluginSettings(source backend.DataSourceInstanceSettings) (*PluginSetti
 		return nil, fmt.Errorf("could not unmarshal PluginSettings json: %w", err)
 	}
 
+	// Presence matters: an explicitly empty secure password must also override
+	// a legacy plaintext password. Fall back only for unmigrated data sources.
+	if password, exists := source.DecryptedSecureJSONData["password"]; exists {
+		settings.JSONData.Password = password
+	}
+
 	return &settings, nil
 }
